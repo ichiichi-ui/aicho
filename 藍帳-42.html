@@ -1,0 +1,2471 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>藍帳 — 個人複式簿記</title>
+<style>
+  :root{
+    --ai:#1f3a5f;
+    --ai-deep:#152947;
+    --ai-line:#2d4d78;
+    --washi:#f3ead9;
+    --washi-soft:#ece0c9;
+    --sumi:#2b2620;
+    --sumi-soft:#5a5346;
+    --hanko:#a63446;
+    --matcha:#5b7553;
+    --gold:#b8935f;
+    --gold-soft:#d8b98a;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ai-deep);
+    background-image:
+      linear-gradient(180deg, var(--ai-deep) 0%, var(--ai) 100%);
+    font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif;
+    color:var(--sumi);
+    min-height:100vh;
+  }
+  .num{font-family:ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace; font-variant-numeric: tabular-nums;}
+  .serif{font-family:'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', serif;}
+
+  /* header */
+  .app-header{
+    padding:28px 20px 20px;
+    text-align:center;
+    position:relative;
+  }
+  .app-header::after{
+    content:"";
+    position:absolute;
+    bottom:0; left:50%;
+    transform:translateX(-50%);
+    width:120px; height:1px;
+    background:linear-gradient(90deg, transparent, var(--gold-soft), transparent);
+  }
+  .app-title{
+    font-family:'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', serif;
+    font-weight:800;
+    font-size:30px;
+    color:var(--washi);
+    letter-spacing:0.12em;
+    margin:0;
+  }
+  .app-title .kanji-mark{
+    display:inline-block;
+    color:var(--hanko);
+    background:var(--washi);
+    border-radius:4px;
+    padding:2px 8px;
+    margin-left:10px;
+    font-size:15px;
+    letter-spacing:0.2em;
+    vertical-align:middle;
+    box-shadow: 0 0 0 1.5px var(--hanko) inset;
+    transform: rotate(-2deg);
+  }
+  .app-sub{
+    color:var(--gold-soft);
+    font-size:12px;
+    letter-spacing:0.25em;
+    margin-top:6px;
+    font-family:ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  }
+
+  /* tabs */
+  .tabbar{
+    display:flex;
+    gap:2px;
+    max-width:960px;
+    margin:0 auto;
+    padding:0 16px;
+    overflow-x:auto;
+    scrollbar-width:none;
+  }
+  .tabbar::-webkit-scrollbar{display:none;}
+  .tab-btn{
+    flex:0 0 auto;
+    background:transparent;
+    border:none;
+    color:var(--gold-soft);
+    font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif;
+    font-size:13px;
+    font-weight:500;
+    padding:10px 16px;
+    cursor:pointer;
+    border-bottom:2px solid transparent;
+    white-space:nowrap;
+    letter-spacing:0.05em;
+    transition:all .15s ease;
+  }
+  .tab-btn:hover{ color:var(--washi); }
+  .tab-btn.active{
+    color:var(--washi);
+    border-bottom-color:var(--hanko);
+  }
+
+  /* main container: washi paper */
+  .paper-wrap{
+    max-width:960px;
+    margin:0 auto;
+    padding:18px 16px 60px;
+  }
+  .paper{
+    background:var(--washi);
+    background-image:
+      repeating-linear-gradient(180deg, transparent, transparent 34px, rgba(43,38,32,0.045) 35px);
+    border-radius:6px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.35), 0 2px 0 rgba(255,255,255,0.05) inset;
+    padding:24px 20px;
+    position:relative;
+    min-height:400px;
+  }
+  .paper::before{
+    content:"";
+    position:absolute;
+    left:0; top:0; bottom:0;
+    width:6px;
+    background:linear-gradient(180deg, var(--hanko), var(--gold));
+    border-radius:6px 0 0 6px;
+  }
+
+  h2.section-title{
+    font-family:'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', serif;
+    font-size:19px;
+    font-weight:700;
+    color:var(--sumi);
+    margin:0 0 4px;
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+  }
+  h2.section-title .en{
+    font-family:ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+    font-size:10px;
+    color:var(--sumi-soft);
+    letter-spacing:0.1em;
+  }
+  .section-desc{
+    font-size:12.5px;
+    color:var(--sumi-soft);
+    margin:0 0 18px;
+    line-height:1.6;
+  }
+
+  /* dashboard cards */
+  .card-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    margin-bottom:20px;
+  }
+  @media (max-width:640px){ .card-grid{grid-template-columns:1fr;} }
+  .stat-card{
+    background:rgba(255,255,255,0.5);
+    border:1px solid rgba(43,38,32,0.08);
+    border-radius:6px;
+    padding:14px 16px;
+    position:relative;
+  }
+  .stat-label{
+    font-size:11px;
+    color:var(--sumi-soft);
+    letter-spacing:0.08em;
+    margin-bottom:6px;
+  }
+  .stat-value{
+    font-family:ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+    font-weight:600;
+    font-size:22px;
+  }
+  .stat-value.pos{color:var(--matcha);}
+  .stat-value.neg{color:var(--hanko);}
+  .stat-value.ink{color:var(--ai);}
+
+  /* forms */
+  .field-row{ margin-bottom:14px; }
+  label{
+    display:block;
+    font-size:12px;
+    color:var(--sumi-soft);
+    margin-bottom:5px;
+    letter-spacing:0.03em;
+  }
+  select, input[type=text], input[type=number], input[type=date]{
+    width:100%;
+    padding:9px 10px;
+    border:1px solid rgba(43,38,32,0.18);
+    border-radius:4px;
+    background:#fffdf8;
+    font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif;
+    font-size:14px;
+    color:var(--sumi);
+  }
+  select:focus, input:focus{
+    outline:2px solid var(--ai);
+    outline-offset:1px;
+  }
+  .btn{
+    font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif;
+    font-weight:600;
+    font-size:13px;
+    padding:10px 18px;
+    border-radius:4px;
+    border:none;
+    cursor:pointer;
+    letter-spacing:0.05em;
+    transition:transform .1s ease, opacity .15s ease;
+  }
+  .btn:active{ transform:scale(0.98); }
+  .btn-primary{ background:var(--ai); color:var(--washi); }
+  .btn-primary:hover{ background:var(--ai-line); }
+  .btn-ghost{ background:transparent; color:var(--ai); border:1px solid var(--ai); }
+  .btn-ghost:hover{ background:rgba(31,58,95,0.08); }
+  .btn-danger{ background:transparent; color:var(--hanko); border:1px solid var(--hanko); padding:5px 10px; font-size:11px; }
+  .btn-danger:hover{ background:rgba(166,52,70,0.08); }
+
+  .type-picker{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:6px;
+    margin-bottom:20px;
+  }
+  @media (max-width:640px){ .type-picker{grid-template-columns:repeat(2,1fr);} }
+  .type-btn{
+    background:rgba(255,255,255,0.45);
+    border:1px solid rgba(43,38,32,0.12);
+    border-radius:5px;
+    padding:10px 6px;
+    text-align:center;
+    cursor:pointer;
+    font-size:12px;
+    font-weight:600;
+    color:var(--sumi-soft);
+  }
+  .type-btn.active{
+    background:var(--ai);
+    color:var(--washi);
+    border-color:var(--ai);
+  }
+
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  th{
+    text-align:left;
+    font-size:11px;
+    color:var(--sumi-soft);
+    font-weight:600;
+    letter-spacing:0.05em;
+    padding:8px 8px;
+    border-bottom:1.5px solid var(--sumi);
+  }
+  td{
+    padding:9px 8px;
+    border-bottom:1px solid rgba(43,38,32,0.1);
+    vertical-align:top;
+  }
+  tr:hover td{ background:rgba(255,255,255,0.35); }
+  .tag{
+    display:inline-block;
+    font-size:10px;
+    padding:2px 7px;
+    border-radius:10px;
+    font-weight:600;
+    letter-spacing:0.03em;
+  }
+  .tag-asset{ background:rgba(91,117,83,0.15); color:var(--matcha); }
+  .tag-liability{ background:rgba(166,52,70,0.13); color:var(--hanko); }
+  .tag-equity{ background:rgba(184,147,95,0.2); color:#8a6a3a; }
+  .tag-revenue{ background:rgba(31,58,95,0.13); color:var(--ai); }
+  .tag-expense{ background:rgba(43,38,32,0.1); color:var(--sumi-soft); }
+  .tag.ok{ background:rgba(91,117,83,0.15); color:var(--matcha); }
+  .tag.warn{ background:rgba(184,147,95,0.25); color:#8a6a3a; }
+  .tag.danger{ background:rgba(166,52,70,0.15); color:var(--hanko); }
+
+  .empty-state{
+    text-align:center;
+    padding:50px 20px;
+    color:var(--sumi-soft);
+  }
+  .empty-state .mark{
+    font-family:'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', serif;
+    font-size:15px;
+    color:var(--ai);
+    margin-bottom:6px;
+  }
+
+  .balance-check{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    background:rgba(255,255,255,0.5);
+    border-radius:6px;
+    padding:12px 16px;
+    margin-top:16px;
+    font-size:13px;
+  }
+  .balance-check.ok{ border:1px solid rgba(91,117,83,0.3); }
+  .balance-check.ng{ border:1px solid rgba(166,52,70,0.3); }
+
+  .toast{
+    position:fixed;
+    bottom:24px; left:50%;
+    transform:translateX(-50%) translateY(20px);
+    background:var(--sumi);
+    color:var(--washi);
+    padding:11px 20px;
+    border-radius:6px;
+    font-size:13px;
+    opacity:0;
+    pointer-events:none;
+    transition:all .25s ease;
+    z-index:50;
+    box-shadow:0 10px 30px rgba(0,0,0,0.3);
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .inline-actions{ display:flex; gap:6px; }
+  .account-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:10px 4px;
+    border-bottom:1px solid rgba(43,38,32,0.08);
+  }
+  .ob-input{ width:130px; text-align:right; }
+
+  .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:640px){ .two-col{grid-template-columns:1fr;} }
+
+  select#ledgerAccountSelect{ max-width:280px; }
+
+  .footer-note{
+    text-align:center;
+    color:var(--gold-soft);
+    font-size:11px;
+    padding:20px;
+    letter-spacing:0.05em;
+  }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+<div id="lockScreen" style="position:fixed;inset:0;background:var(--ai-deep, #152947);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;">
+  <div style="background:var(--washi,#f3ead9);border-radius:10px;padding:32px 24px;max-width:340px;width:100%;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,0.3);">
+    <div style="font-size:26px;font-weight:800;color:var(--ai,#1f3a5f);margin-bottom:4px;">藍帳</div>
+    <div style="font-size:11px;letter-spacing:0.1em;color:var(--sumi-soft,#6b6258);margin-bottom:22px;">PERSONAL DOUBLE-ENTRY LEDGER</div>
+    <div id="lockPromptText" style="font-size:13px;color:var(--sumi-soft,#6b6258);margin-bottom:14px;">合言葉を入力してください</div>
+    <div style="position:relative;margin-bottom:10px;">
+      <input type="password" id="lockPasswordInput" style="width:100%;padding:10px 40px 10px 12px;font-size:16px;border:1px solid #c9beac;border-radius:6px;box-sizing:border-box;" autocomplete="off">
+      <button type="button" id="lockToggleVisibility" aria-label="合言葉を表示" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:6px;color:var(--sumi-soft,#6b6258);font-size:18px;line-height:1;">👁</button>
+    </div>
+    <div id="lockConfirmWrap" style="position:relative;margin-bottom:10px;display:none;">
+      <input type="password" id="lockPasswordConfirmInput" placeholder="もう一度入力してください" style="width:100%;padding:10px 40px 10px 12px;font-size:16px;border:1px solid #c9beac;border-radius:6px;box-sizing:border-box;" autocomplete="off">
+      <button type="button" id="lockToggleVisibilityConfirm" aria-label="合言葉を表示" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:6px;color:var(--sumi-soft,#6b6258);font-size:18px;line-height:1;">👁</button>
+    </div>
+    <div id="lockError" style="color:#a63446;font-size:12px;min-height:16px;margin-bottom:10px;"></div>
+    <button id="lockSubmitBtn" style="width:100%;padding:11px;background:var(--ai,#1f3a5f);color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;">開く</button>
+  </div>
+</div>
+
+<div id="appRoot" style="display:none;">
+
+<div class="app-header">
+  <h1 class="app-title">藍帳<span class="kanji-mark">AI-CHO</span></h1>
+  <div class="app-sub">PERSONAL DOUBLE-ENTRY LEDGER</div>
+</div>
+
+<div class="tabbar" id="tabbar"></div>
+
+<div class="paper-wrap">
+  <div class="paper" id="paperContent">
+    <div class="empty-state"><div class="mark">読み込み中…</div></div>
+  </div>
+</div>
+
+<div class="footer-note">データはこの端末に保存されます — 藍色は「褪せぬ色」、記録も同じように</div>
+
+<div class="toast" id="toast"></div>
+
+</div>
+
+<script>
+const STORAGE_KEY = 'aicho-ledger-v1';
+const LOCK_PASSWORD_KEY = 'aicho-lock-password-v1';
+const LOCK_SESSION_KEY = 'aicho-unlocked-session-v1';
+
+const CATEGORY_LABEL = {
+  asset:'資産', liability:'負債', equity:'純資産', revenue:'収益', expense:'費用'
+};
+const CATEGORY_TAGCLASS = {
+  asset:'tag-asset', liability:'tag-liability', equity:'tag-equity', revenue:'tag-revenue', expense:'tag-expense'
+};
+const DEBIT_NORMAL = ['asset','expense'];
+
+function isDebitNormal(cat){ return DEBIT_NORMAL.includes(cat); }
+
+// ---------- id helper (avoid relying on crypto.randomUUID, which can be unavailable in sandboxed frames) ----------
+function uid(){
+  return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,10);
+}
+
+// ---------- default state ----------
+function defaultAccounts(){
+  const mk = (name, category) => ({ id: uid(), name, category, openingBalance:0, isBusiness:false, incomeType:'none', expenseType:'none', trackPayment:false });
+  return [
+    mk('現金','asset'), mk('普通預金','asset'), mk('定期預金','asset'),
+    mk('証券口座','asset'), mk('有価証券','asset'),
+    mk('クレジットカード未払金','liability'), mk('住宅ローン','liability'), mk('その他借入金','liability'),
+    mk('元入金','equity'),
+    mk('給与収入','revenue'), mk('副業収入','revenue'), mk('利子・配当収入','revenue'), mk('その他収入','revenue'),
+    mk('食費','expense'), mk('住居費','expense'), mk('水道光熱費','expense'), mk('通信費','expense'),
+    mk('交通費','expense'), mk('保険料','expense'), mk('医療費','expense'), mk('娯楽・交際費','expense'),
+    mk('教育・自己投資費','expense'), mk('その他支出','expense'),
+  ];
+}
+
+let state = {
+  accounts: [],
+  transactions: [], // {id, date, debitAccountId, creditAccountId, amount, memo, type}
+  setupDone: false,
+  taxSettings: { blueDeduction:650000, socialInsurance:0, medicalPaid:0, medicalInsured:0, pensionerAge65:true, basicDeduction:480000, taxBrackets: defaultTaxBrackets() },
+  payments: [], // 単発の支払い予定 {id, name, amount, invoiceDate, dueDate, paidDate, paid}
+  paymentMeta: {}, // 記帳連動の支払い情報 {transactionId: {invoiceDate, dueDate, paidDate, paid}}
+  csvRules: [] // {keyword, accountId} 摘要キーワード→勘定科目の自動割当ルール
+};
+
+let currentTab = 'dashboard';
+
+// ---------- persistence ----------
+async function loadState(){
+  // Show something immediately instead of waiting on storage.
+  state.accounts = defaultAccounts();
+  try{ render(); }catch(e){}
+
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      state = Object.assign({accounts:[], transactions:[], setupDone:false}, parsed);
+      if(!state.accounts || state.accounts.length===0){
+        state.accounts = defaultAccounts();
+      }
+      state.accounts.forEach(a=>{
+        if(a.category==='revenue' && a.incomeType===undefined){
+          a.incomeType = a.isBusiness ? 'business' : 'none';
+        }
+        if(a.category==='expense' && a.expenseType===undefined){
+          a.expenseType = a.isBusiness ? 'business' : 'none';
+        }
+        if(a.category==='liability' && a.trackPayment===undefined){
+          a.trackPayment = false;
+        }
+      });
+      if(!state.taxSettings){
+        state.taxSettings = { blueDeduction:650000, socialInsurance:0, medicalPaid:0, medicalInsured:0, pensionerAge65:true, basicDeduction:480000, taxBrackets: defaultTaxBrackets() };
+      }
+      if(state.taxSettings.basicDeduction===undefined) state.taxSettings.basicDeduction = 480000;
+      if(!state.taxSettings.taxBrackets) state.taxSettings.taxBrackets = defaultTaxBrackets();
+      if(!state.taxSettings.localTax){
+        state.taxSettings.localTax = {
+          bizTaxRate: 5, bizTaxDeduction: 2900000, includeRealEstateInBizTax: false,
+          residentBasicDeduction: 430000, residentTaxRate: 10, residentPerCapita: 5000
+        };
+      }
+      if(!state.taxSettings.consumptionTaxRates){
+        state.taxSettings.consumptionTaxRates = [{label:'標準', rate:10}, {label:'軽減', rate:8}];
+      }
+      if(!state.payments) state.payments = []; // 単発の支払い予定
+      if(!state.csvRules) state.csvRules = []; // {keyword, accountId} 摘要キーワード→勘定科目の自動割当ルール
+      if(!state.paymentMeta) state.paymentMeta = {}; // 記帳連動: {transactionId: {invoiceDate, dueDate, paidDate, paid}}
+    }
+    // if raw is falsy (no saved data yet), keep the defaults already shown
+  }catch(e){
+    // no saved data, or storage unavailable — keep defaults already shown
+  }
+  try{
+    render();
+  }catch(e3){
+    document.getElementById('paperContent').innerHTML =
+      '<div class="empty-state"><div class="mark">読み込み中にエラーが発生しました</div>'+
+      '<div style="font-size:11px;color:var(--sumi-soft);margin-top:8px;">'+String(e3 && e3.message ? e3.message : e3)+'</div></div>';
+  }
+}
+
+let saveTimer = null;
+async function saveState(showToast){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    if(showToast) doToast('保存しました');
+  }catch(e){
+    doToast('保存に失敗しました');
+  }
+}
+
+function doToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=> t.classList.remove('show'), 1800);
+}
+
+// ---------- calculations ----------
+function accountById(id){ return state.accounts.find(a=>a.id===id); }
+
+function accountBalance(acc){
+  let bal = acc.openingBalance || 0;
+  const debitNorm = isDebitNormal(acc.category);
+  state.transactions.forEach(tx=>{
+    if(tx.debitAccountId === acc.id) bal += debitNorm ? tx.amount : -tx.amount;
+    if(tx.creditAccountId === acc.id) bal += debitNorm ? -tx.amount : tx.amount;
+  });
+  return bal;
+}
+
+function totalByCategory(cat){
+  return state.accounts.filter(a=>a.category===cat).reduce((s,a)=>s+accountBalance(a),0);
+}
+
+function monthKey(d){ return d.slice(0,7); }
+
+function thisMonthTotals(){
+  const now = new Date();
+  const key = now.toISOString().slice(0,7);
+  let income=0, expense=0;
+  state.transactions.forEach(tx=>{
+    if(monthKey(tx.date) !== key) return;
+    const d = accountById(tx.debitAccountId);
+    const c = accountById(tx.creditAccountId);
+    if(c && c.category==='revenue') income += tx.amount;
+    if(d && d.category==='expense') expense += tx.amount;
+  });
+  return {income, expense};
+}
+
+function fmtYen(n){
+  const sign = n<0 ? '-' : '';
+  return sign + '¥' + Math.abs(Math.round(n)).toLocaleString('ja-JP');
+}
+
+// ---------- tabs ----------
+const TABS = [
+  {id:'dashboard', label:'ダッシュボード'},
+  {id:'entry', label:'仕訳入力'},
+  {id:'journal', label:'仕訳帳'},
+  {id:'ledger', label:'総勘定元帳'},
+  {id:'trial', label:'試算表'},
+  {id:'bs', label:'貸借対照表'},
+  {id:'accounts', label:'勘定科目'},
+  {id:'payments', label:'支払管理'},
+  {id:'consumptiontax', label:'消費税'},
+  {id:'localtax', label:'事業税・住民税'},
+  {id:'tax', label:'確定申告'},
+  {id:'csvimport', label:'CSV取込'},
+  {id:'search', label:'検索'},
+  {id:'backup', label:'バックアップ'},
+];
+
+function renderTabbar(){
+  const bar = document.getElementById('tabbar');
+  bar.innerHTML = '';
+  TABS.forEach(t=>{
+    const b = document.createElement('button');
+    b.className = 'tab-btn' + (currentTab===t.id ? ' active' : '');
+    b.textContent = t.label;
+    b.onclick = ()=>{ currentTab = t.id; render(); };
+    bar.appendChild(b);
+  });
+}
+
+function render(){
+  renderTabbar();
+  const el = document.getElementById('paperContent');
+  el.innerHTML = '';
+  if(currentTab==='dashboard') renderDashboard(el);
+  else if(currentTab==='entry') renderEntry(el);
+  else if(currentTab==='journal') renderJournal(el);
+  else if(currentTab==='ledger') renderLedger(el);
+  else if(currentTab==='trial') renderTrial(el);
+  else if(currentTab==='bs') renderBS(el);
+  else if(currentTab==='accounts') renderAccounts(el);
+  else if(currentTab==='payments') renderPayments(el);
+  else if(currentTab==='consumptiontax') renderConsumptionTax(el);
+  else if(currentTab==='localtax') renderLocalTax(el);
+  else if(currentTab==='tax') renderTaxSummary(el);
+  else if(currentTab==='csvimport') renderCsvImport(el);
+  else if(currentTab==='search') renderSearch(el);
+  else if(currentTab==='backup') renderBackup(el);
+}
+
+// ---------- dashboard ----------
+function renderDashboard(el){
+  const assets = totalByCategory('asset');
+  const liabilities = totalByCategory('liability');
+  const netWorth = assets - liabilities;
+  const {income, expense} = thisMonthTotals();
+
+  el.innerHTML = `
+    <h2 class="section-title">ダッシュボード <span class="en">OVERVIEW</span></h2>
+    <p class="section-desc">現在の資産状況と今月の収支の概況です。</p>
+    <div class="card-grid">
+      <div class="stat-card">
+        <div class="stat-label">総資産</div>
+        <div class="stat-value ink num">${fmtYen(assets)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">総負債</div>
+        <div class="stat-value neg num">${fmtYen(liabilities)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">純資産</div>
+        <div class="stat-value ${netWorth>=0?'pos':'neg'} num">${fmtYen(netWorth)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">今月の収入</div>
+        <div class="stat-value pos num">${fmtYen(income)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">今月の支出</div>
+        <div class="stat-value neg num">${fmtYen(expense)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">今月の収支</div>
+        <div class="stat-value ${income-expense>=0?'pos':'neg'} num">${fmtYen(income-expense)}</div>
+      </div>
+    </div>
+    <div id="assetBreakdown"></div>
+  `;
+
+  const assetAccounts = state.accounts.filter(a=>a.category==='asset' || a.category==='liability');
+  const rows = assetAccounts.map(a=>{
+    const bal = accountBalance(a);
+    if(bal===0 && a.openingBalance===0 && !state.transactions.some(t=>t.debitAccountId===a.id||t.creditAccountId===a.id)) return '';
+    return `<tr><td>${a.name}</td><td><span class="tag ${CATEGORY_TAGCLASS[a.category]}">${CATEGORY_LABEL[a.category]}</span></td><td style="text-align:right" class="num">${fmtYen(bal)}</td></tr>`;
+  }).join('');
+
+  document.getElementById('assetBreakdown').innerHTML = `
+    <h2 class="section-title" style="margin-top:24px;">資産・負債の内訳 <span class="en">BALANCES</span></h2>
+    <table>
+      <thead><tr><th>勘定科目</th><th>区分</th><th style="text-align:right">残高</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan=3 style="color:var(--sumi-soft)">まだ記録がありません。「勘定科目」タブから期首残高を登録しましょう。</td></tr>'}</tbody>
+    </table>
+  `;
+}
+
+// ---------- entry ----------
+let entryType = 'income';
+const ENTRY_TYPES = [
+  {id:'income', label:'収入'},
+  {id:'expense', label:'支出'},
+  {id:'transfer', label:'資産振替'},
+  {id:'repay', label:'カード払い/返済'},
+  {id:'borrow', label:'借入'},
+  {id:'free', label:'自由仕訳'},
+];
+
+function accOptions(filterFn, selectedId){
+  return state.accounts.filter(filterFn).map(a=>
+    `<option value="${a.id}" ${a.id===selectedId?'selected':''}>${a.name}</option>`
+  ).join('');
+}
+
+function renderEntry(el){
+  el.innerHTML = `
+    <h2 class="section-title">仕訳入力 <span class="en">NEW ENTRY</span></h2>
+    <p class="section-desc">取引の種類を選ぶと、借方・貸方は自動で判定されます。</p>
+    <div class="type-picker" id="typePicker"></div>
+    <div id="entryForm"></div>
+  `;
+  const picker = document.getElementById('typePicker');
+  ENTRY_TYPES.forEach(t=>{
+    const b = document.createElement('div');
+    b.className = 'type-btn' + (entryType===t.id ? ' active' : '');
+    b.textContent = t.label;
+    b.onclick = ()=>{ entryType = t.id; render(); };
+    picker.appendChild(b);
+  });
+
+  const form = document.getElementById('entryForm');
+  const today = new Date().toISOString().slice(0,10);
+
+  const assetAcc = a=>a.category==='asset';
+  const liabAcc = a=>a.category==='liability';
+  const revAcc = a=>a.category==='revenue';
+  const expAcc = a=>a.category==='expense';
+
+  let bodyHtml = '';
+  if(entryType==='income'){
+    bodyHtml = `
+      <div class="two-col">
+        <div class="field-row"><label>収益科目（何の収入か）</label><select id="f_credit">${accOptions(revAcc)}</select></div>
+        <div class="field-row"><label>入金先（資産）</label><select id="f_debit">${accOptions(assetAcc)}</select></div>
+      </div>`;
+  } else if(entryType==='expense'){
+    bodyHtml = `
+      <div class="two-col">
+        <div class="field-row"><label>費用科目（何に使ったか）</label><select id="f_debit">${accOptions(expAcc)}</select></div>
+        <div class="field-row"><label>支払元（資産）</label><select id="f_credit">${accOptions(assetAcc)}</select></div>
+      </div>`;
+  } else if(entryType==='transfer'){
+    bodyHtml = `
+      <div class="two-col">
+        <div class="field-row"><label>移動元（資産）</label><select id="f_credit">${accOptions(assetAcc)}</select></div>
+        <div class="field-row"><label>移動先（資産）</label><select id="f_debit">${accOptions(assetAcc)}</select></div>
+      </div>`;
+  } else if(entryType==='repay'){
+    bodyHtml = `
+      <div class="two-col">
+        <div class="field-row"><label>減らす負債（カード・ローン）</label><select id="f_debit">${accOptions(liabAcc)}</select></div>
+        <div class="field-row"><label>支払元（資産）</label><select id="f_credit">${accOptions(assetAcc)}</select></div>
+      </div>`;
+  } else if(entryType==='borrow'){
+    bodyHtml = `
+      <div class="two-col">
+        <div class="field-row"><label>入金先（資産）</label><select id="f_debit">${accOptions(assetAcc)}</select></div>
+        <div class="field-row"><label>増える負債</label><select id="f_credit">${accOptions(liabAcc)}</select></div>
+      </div>`;
+  } else if(entryType==='free'){
+    bodyHtml = `
+      <div class="two-col">
+        <div class="field-row"><label>借方科目（Debit）</label><select id="f_debit">${accOptions(()=>true)}</select></div>
+        <div class="field-row"><label>貸方科目（Credit）</label><select id="f_credit">${accOptions(()=>true)}</select></div>
+      </div>`;
+  }
+
+  const showTaxFields = (entryType==='income' || entryType==='expense');
+  if(!state.taxSettings.consumptionTaxRates){
+    state.taxSettings.consumptionTaxRates = [{label:'標準', rate:10}, {label:'軽減', rate:8}];
+  }
+  const ctRates = state.taxSettings.consumptionTaxRates;
+  const taxFieldsHtml = showTaxFields ? `
+    <div class="two-col">
+      <div class="field-row">
+        <label>消費税区分</label>
+        <select id="f_taxcat">
+          <option value="none">対象外（不課税・家事按分外等）</option>
+          ${ctRates.map(r=>`<option value="taxable:${r.rate}">課税（${r.label} ${r.rate}%）</option>`).join('')}
+          <option value="exempt">非課税</option>
+        </select>
+      </div>
+      <div class="field-row" id="f_taxbreakdown_wrap" style="display:none;">
+        <label>内訳（自動計算）</label>
+        <div id="f_taxbreakdown" style="font-size:12.5px;color:var(--sumi-soft);padding-top:8px;">—</div>
+      </div>
+    </div>
+  ` : '';
+
+  form.innerHTML = `
+    ${bodyHtml}
+    <div class="two-col">
+      <div class="field-row"><label>日付</label><input type="date" id="f_date" value="${today}"></div>
+      <div class="field-row"><label>金額（円・税込総額）</label><input type="number" id="f_amount" placeholder="0" min="0"></div>
+    </div>
+    ${taxFieldsHtml}
+    <div class="field-row"><label>摘要（メモ）</label><input type="text" id="f_memo" placeholder="例：7月分給与"></div>
+    <button class="btn btn-primary" id="submitEntry">記帳する</button>
+  `;
+
+  if(showTaxFields){
+    const catSel = document.getElementById('f_taxcat');
+    const amtInput = document.getElementById('f_amount');
+    const updateBreakdown = ()=>{
+      const wrap = document.getElementById('f_taxbreakdown_wrap');
+      const out = document.getElementById('f_taxbreakdown');
+      const cat = catSel.value;
+      const amount = parseFloat(amtInput.value)||0;
+      if(cat.startsWith('taxable:')){
+        wrap.style.display = '';
+        const rate = parseFloat(cat.split(':')[1]);
+        const taxAmt = Math.round(amount * rate/(100+rate));
+        const netAmt = amount - taxAmt;
+        out.textContent = `本体 ${fmtYen(netAmt)} ＋ 消費税 ${fmtYen(taxAmt)}`;
+      } else {
+        wrap.style.display = 'none';
+      }
+    };
+    catSel.onchange = updateBreakdown;
+    amtInput.oninput = updateBreakdown;
+  }
+
+  document.getElementById('submitEntry').onclick = ()=>{
+    const debitId = document.getElementById('f_debit').value;
+    const creditId = document.getElementById('f_credit').value;
+    const amount = parseFloat(document.getElementById('f_amount').value);
+    const date = document.getElementById('f_date').value;
+    const memo = document.getElementById('f_memo').value;
+    if(!debitId || !creditId){ doToast('勘定科目を登録してください'); return; }
+    if(debitId===creditId){ doToast('借方と貸方に同じ科目は選べません'); return; }
+    if(!amount || amount<=0){ doToast('金額を入力してください'); return; }
+    if(!date){ doToast('日付を入力してください'); return; }
+
+    let taxCategory = 'none', taxRate = 0, taxAmount = 0, netAmount = amount;
+    if(showTaxFields){
+      const cat = document.getElementById('f_taxcat').value;
+      if(cat.startsWith('taxable:')){
+        taxRate = parseFloat(cat.split(':')[1]);
+        taxAmount = Math.round(amount * taxRate/(100+taxRate));
+        netAmount = amount - taxAmount;
+        taxCategory = 'taxable';
+      } else if(cat==='exempt'){
+        taxCategory = 'exempt';
+      }
+    }
+
+    state.transactions.push({
+      id: uid(), date, debitAccountId:debitId, creditAccountId:creditId, amount, memo, type:entryType,
+      taxCategory, taxRate, taxAmount, netAmount
+    });
+    saveState(true);
+    document.getElementById('f_amount').value='';
+    document.getElementById('f_memo').value='';
+    render();
+  };
+}
+
+// ---------- journal ----------
+function renderJournal(el){
+  const sorted = [...state.transactions].sort((a,b)=> b.date.localeCompare(a.date));
+  const rows = sorted.map(tx=>{
+    const d = accountById(tx.debitAccountId);
+    const c = accountById(tx.creditAccountId);
+    return `<tr>
+      <td class="num">${tx.date}</td>
+      <td>${d ? d.name : '(削除済)'}<div style="font-size:10px;color:var(--sumi-soft)">借方</div></td>
+      <td>${c ? c.name : '(削除済)'}<div style="font-size:10px;color:var(--sumi-soft)">貸方</div></td>
+      <td style="text-align:right" class="num">${fmtYen(tx.amount)}</td>
+      <td>${tx.memo || ''}</td>
+      <td><button class="btn-danger" data-id="${tx.id}">削除</button></td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `
+    <h2 class="section-title">仕訳帳 <span class="en">JOURNAL</span></h2>
+    <p class="section-desc">記帳したすべての取引の一覧です（新しい順）。</p>
+    <table>
+      <thead><tr><th>日付</th><th>借方</th><th>貸方</th><th style="text-align:right">金額</th><th>摘要</th><th></th></tr></thead>
+      <tbody>${rows || '<tr><td colspan=6><div class="empty-state"><div class="mark">— まだ記帳がありません —</div>「仕訳入力」タブから最初の取引を記帳しましょう</div></td></tr>'}</tbody>
+    </table>
+  `;
+  el.querySelectorAll('button[data-id]').forEach(btn=>{
+    btn.onclick = ()=>{
+      state.transactions = state.transactions.filter(t=>t.id!==btn.dataset.id);
+      saveState(true);
+      render();
+    };
+  });
+}
+
+// ---------- general ledger ----------
+let ledgerSelectedAccount = null;
+function renderLedger(el){
+  if(!ledgerSelectedAccount && state.accounts.length) ledgerSelectedAccount = state.accounts[0].id;
+  el.innerHTML = `
+    <h2 class="section-title">総勘定元帳 <span class="en">GENERAL LEDGER</span></h2>
+    <p class="section-desc">科目を選ぶと、その科目に関わる取引と残高推移を確認できます。</p>
+    <div class="field-row">
+      <label>勘定科目を選択</label>
+      <select id="ledgerAccountSelect">${accOptions(()=>true, ledgerSelectedAccount)}</select>
+    </div>
+    <div id="ledgerTableWrap"></div>
+  `;
+  document.getElementById('ledgerAccountSelect').onchange = (e)=>{
+    ledgerSelectedAccount = e.target.value;
+    renderLedgerTable();
+  };
+  renderLedgerTable();
+}
+
+function renderLedgerTable(){
+  const wrap = document.getElementById('ledgerTableWrap');
+  const acc = accountById(ledgerSelectedAccount);
+  if(!acc){ wrap.innerHTML=''; return; }
+  const debitNorm = isDebitNormal(acc.category);
+  const related = state.transactions
+    .filter(t=>t.debitAccountId===acc.id || t.creditAccountId===acc.id)
+    .sort((a,b)=>a.date.localeCompare(b.date));
+
+  let running = acc.openingBalance || 0;
+  let rows = `<tr><td class="num">—</td><td>期首残高</td><td></td><td></td><td style="text-align:right" class="num">${fmtYen(running)}</td></tr>`;
+  related.forEach(tx=>{
+    const other = accountById(tx.debitAccountId===acc.id ? tx.creditAccountId : tx.debitAccountId);
+    const isDebitSide = tx.debitAccountId===acc.id;
+    const debitAmt = isDebitSide ? tx.amount : 0;
+    const creditAmt = !isDebitSide ? tx.amount : 0;
+    running += isDebitSide ? (debitNorm?tx.amount:-tx.amount) : (debitNorm?-tx.amount:tx.amount);
+    rows += `<tr>
+      <td class="num">${tx.date}</td>
+      <td>${tx.memo || (other?other.name:'')}</td>
+      <td style="text-align:right" class="num">${debitAmt?fmtYen(debitAmt):''}</td>
+      <td style="text-align:right" class="num">${creditAmt?fmtYen(creditAmt):''}</td>
+      <td style="text-align:right" class="num">${fmtYen(running)}</td>
+    </tr>`;
+  });
+
+  wrap.innerHTML = `
+    <div class="stat-card" style="margin-bottom:14px;">
+      <div class="stat-label">${acc.name} — 現在残高</div>
+      <div class="stat-value ink num">${fmtYen(accountBalance(acc))}</div>
+    </div>
+    <table>
+      <thead><tr><th>日付</th><th>摘要</th><th style="text-align:right">借方</th><th style="text-align:right">貸方</th><th style="text-align:right">残高</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+// ---------- trial balance ----------
+function renderTrial(el){
+  let totalDebit=0, totalCredit=0;
+  const rows = state.accounts.map(a=>{
+    const bal = accountBalance(a);
+    const debitNorm = isDebitNormal(a.category);
+    const debitCol = debitNorm ? Math.max(bal,0) : Math.max(-bal,0);
+    const creditCol = debitNorm ? Math.max(-bal,0) : Math.max(bal,0);
+    totalDebit += debitCol;
+    totalCredit += creditCol;
+    return `<tr>
+      <td>${a.name}</td>
+      <td><span class="tag ${CATEGORY_TAGCLASS[a.category]}">${CATEGORY_LABEL[a.category]}</span></td>
+      <td style="text-align:right" class="num">${debitCol?fmtYen(debitCol):''}</td>
+      <td style="text-align:right" class="num">${creditCol?fmtYen(creditCol):''}</td>
+    </tr>`;
+  }).join('');
+
+  const balanced = Math.round(totalDebit) === Math.round(totalCredit);
+
+  el.innerHTML = `
+    <h2 class="section-title">試算表 <span class="en">TRIAL BALANCE</span></h2>
+    <p class="section-desc">すべての勘定科目の借方・貸方残高です。合計が一致していれば記帳は正しくバランスしています。</p>
+    <table>
+      <thead><tr><th>勘定科目</th><th>区分</th><th style="text-align:right">借方残高</th><th style="text-align:right">貸方残高</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot>
+        <tr style="font-weight:700;"><td colspan=2>合計</td><td style="text-align:right" class="num">${fmtYen(totalDebit)}</td><td style="text-align:right" class="num">${fmtYen(totalCredit)}</td></tr>
+      </tfoot>
+    </table>
+    <div class="balance-check ${balanced?'ok':'ng'}">
+      <span>${balanced ? '✓ 貸借は一致しています' : '✗ 貸借が一致していません'}</span>
+      <span class="num" style="color:${balanced?'var(--matcha)':'var(--hanko)'}">${balanced?'BALANCED':'差額 '+fmtYen(totalDebit-totalCredit)}</span>
+    </div>
+  `;
+}
+
+// ---------- balance sheet ----------
+function renderBS(el){
+  const assets = state.accounts.filter(a=>a.category==='asset');
+  const liabilities = state.accounts.filter(a=>a.category==='liability');
+  const equity = state.accounts.filter(a=>a.category==='equity');
+  const retained = totalByCategory('revenue') - totalByCategory('expense');
+
+  const rowsFor = (list)=> list.map(a=>{
+    const bal = accountBalance(a);
+    return `<tr><td>${a.name}</td><td style="text-align:right" class="num">${fmtYen(bal)}</td></tr>`;
+  }).join('');
+
+  const totalAssets = assets.reduce((s,a)=>s+accountBalance(a),0);
+  const totalLiab = liabilities.reduce((s,a)=>s+accountBalance(a),0);
+  const totalEquityBase = equity.reduce((s,a)=>s+accountBalance(a),0);
+  const totalEquity = totalEquityBase + retained;
+
+  el.innerHTML = `
+    <h2 class="section-title">貸借対照表 <span class="en">BALANCE SHEET</span></h2>
+    <p class="section-desc">現在時点での資産・負債・純資産の状態です。</p>
+    <div class="two-col">
+      <div>
+        <h3 class="serif" style="font-size:14px;color:var(--matcha);">資産の部</h3>
+        <table><tbody>${rowsFor(assets)}</tbody>
+          <tfoot><tr style="font-weight:700"><td>資産合計</td><td style="text-align:right" class="num">${fmtYen(totalAssets)}</td></tr></tfoot>
+        </table>
+      </div>
+      <div>
+        <h3 class="serif" style="font-size:14px;color:var(--hanko);">負債の部</h3>
+        <table><tbody>${rowsFor(liabilities)}</tbody>
+          <tfoot><tr style="font-weight:700"><td>負債合計</td><td style="text-align:right" class="num">${fmtYen(totalLiab)}</td></tr></tfoot>
+        </table>
+        <h3 class="serif" style="font-size:14px;color:#8a6a3a;margin-top:18px;">純資産の部</h3>
+        <table><tbody>${rowsFor(equity)}
+          <tr><td>当期損益（収益－費用）</td><td style="text-align:right" class="num">${fmtYen(retained)}</td></tr>
+          </tbody>
+          <tfoot><tr style="font-weight:700"><td>純資産合計</td><td style="text-align:right" class="num">${fmtYen(totalEquity)}</td></tr></tfoot>
+        </table>
+      </div>
+    </div>
+    <div class="balance-check ${Math.round(totalAssets)===Math.round(totalLiab+totalEquity)?'ok':'ng'}">
+      <span>資産 = 負債 + 純資産</span>
+      <span class="num">${fmtYen(totalAssets)} = ${fmtYen(totalLiab+totalEquity)}</span>
+    </div>
+  `;
+}
+
+// ---------- accounts management ----------
+function renderAccounts(el){
+  el.innerHTML = `
+    <h2 class="section-title">勘定科目 <span class="en">CHART OF ACCOUNTS</span></h2>
+    <p class="section-desc">科目の追加や、開始時点の残高（期首残高）を設定できます。資産・負債の現在残高をそのまま入力してください。収益・費用科目は、確定申告の集計に含めたいものに「事業用」の印を付けられます。</p>
+    <div id="accountGroups"></div>
+    <h2 class="section-title" style="margin-top:26px;">新しい科目を追加</h2>
+    <div class="two-col">
+      <div class="field-row"><label>科目名</label><input type="text" id="new_acc_name" placeholder="例：電子マネー"></div>
+      <div class="field-row"><label>区分</label>
+        <select id="new_acc_cat">
+          <option value="asset">資産</option>
+          <option value="liability">負債</option>
+          <option value="equity">純資産</option>
+          <option value="revenue">収益</option>
+          <option value="expense">費用</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary" id="addAccountBtn">科目を追加</button>
+  `;
+
+  const groupWrap = document.getElementById('accountGroups');
+  ['asset','liability','equity','revenue','expense'].forEach(cat=>{
+    const accs = state.accounts.filter(a=>a.category===cat);
+    if(!accs.length) return;
+    const box = document.createElement('div');
+    box.style.marginBottom = '18px';
+    box.innerHTML = `<h3 class="serif" style="font-size:14px;margin-bottom:4px;"><span class="tag ${CATEGORY_TAGCLASS[cat]}">${CATEGORY_LABEL[cat]}</span></h3>`;
+    accs.forEach(a=>{
+      const row = document.createElement('div');
+      row.className = 'account-row';
+      const showOpening = (cat==='asset' || cat==='liability');
+      const showIncomeType = (cat==='revenue');
+      const showExpenseType = (cat==='expense');
+      const showTrackPayment = (cat==='liability');
+      const incomeSelect = `<select class="income-type-select" data-id="${a.id}" style="width:auto;font-size:11px;padding:4px 6px;">
+          <option value="none" ${a.incomeType==='none'||!a.incomeType?'selected':''}>対象外</option>
+          <option value="business" ${a.incomeType==='business'?'selected':''}>事業所得</option>
+          <option value="realestate" ${a.incomeType==='realestate'?'selected':''}>不動産所得</option>
+          <option value="pension" ${a.incomeType==='pension'?'selected':''}>公的年金等</option>
+        </select>`;
+      const expenseSelect = `<select class="expense-type-select" data-id="${a.id}" style="width:auto;font-size:11px;padding:4px 6px;">
+          <option value="none" ${a.expenseType==='none'||!a.expenseType?'selected':''}>対象外</option>
+          <option value="business" ${a.expenseType==='business'?'selected':''}>事業経費</option>
+          <option value="realestate" ${a.expenseType==='realestate'?'selected':''}>不動産経費</option>
+        </select>`;
+      const trackPaymentCheck = `<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--sumi-soft);"><input type="checkbox" class="track-payment-check" data-id="${a.id}" ${a.trackPayment?'checked':''}> 支払管理の対象</label>`;
+      row.innerHTML = `
+        <span>${a.name}</span>
+        <div class="inline-actions">
+          ${showIncomeType ? incomeSelect : ''}
+          ${showExpenseType ? expenseSelect : ''}
+          ${showTrackPayment ? trackPaymentCheck : ''}
+          ${showOpening ? `<input type="number" class="ob-input" data-id="${a.id}" value="${a.openingBalance||0}" placeholder="期首残高">` : ''}
+          <button class="btn-danger" data-del="${a.id}">削除</button>
+        </div>
+      `;
+      box.appendChild(row);
+    });
+    groupWrap.appendChild(box);
+  });
+
+  groupWrap.querySelectorAll('input.ob-input').forEach(inp=>{
+    inp.onchange = ()=>{
+      const acc = accountById(inp.dataset.id);
+      acc.openingBalance = parseFloat(inp.value) || 0;
+      saveState(true);
+      render();
+    };
+  });
+  groupWrap.querySelectorAll('select.income-type-select').forEach(sel=>{
+    sel.onchange = ()=>{
+      const acc = accountById(sel.dataset.id);
+      acc.incomeType = sel.value;
+      saveState(true);
+    };
+  });
+  groupWrap.querySelectorAll('select.expense-type-select').forEach(sel=>{
+    sel.onchange = ()=>{
+      const acc = accountById(sel.dataset.id);
+      acc.expenseType = sel.value;
+      saveState(true);
+    };
+  });
+  groupWrap.querySelectorAll('input.track-payment-check').forEach(chk=>{
+    chk.onchange = ()=>{
+      const acc = accountById(chk.dataset.id);
+      acc.trackPayment = chk.checked;
+      saveState(true);
+    };
+  });
+  groupWrap.querySelectorAll('button[data-del]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const id = btn.dataset.del;
+      const used = state.transactions.some(t=>t.debitAccountId===id||t.creditAccountId===id);
+      if(used){ doToast('取引履歴がある科目は削除できません'); return; }
+      state.accounts = state.accounts.filter(a=>a.id!==id);
+      saveState(true);
+      render();
+    };
+  });
+
+  document.getElementById('addAccountBtn').onclick = ()=>{
+    const name = document.getElementById('new_acc_name').value.trim();
+    const cat = document.getElementById('new_acc_cat').value;
+    if(!name){ doToast('科目名を入力してください'); return; }
+    state.accounts.push({ id: uid(), name, category:cat, openingBalance:0, isBusiness:false });
+    saveState(true);
+    render();
+  };
+}
+
+// ---------- tax filing summary ----------
+let taxSelectedYear = null;
+
+function taxBracket(taxable, table){
+  for(const b of table){
+    if(taxable <= b.max) return Math.floor(taxable*b.rate/100 - b.sub);
+  }
+  return 0;
+}
+
+function defaultTaxBrackets(){
+  return [
+    {max:1950000, rate:5, sub:0},
+    {max:3300000, rate:10, sub:97500},
+    {max:6950000, rate:20, sub:427500},
+    {max:9000000, rate:23, sub:636000},
+    {max:18000000, rate:33, sub:1536000},
+    {max:40000000, rate:40, sub:2796000},
+    {max:999999999999, rate:45, sub:4796000},
+  ];
+}
+
+function pensionDeduction(pensionAmount, age65){
+  // 簡易版：公的年金等控除額（雑所得、他の所得合計1,000万円以下を前提）
+  const p = pensionAmount;
+  if(age65){
+    if(p <= 1100000) return p; // 所得0
+    if(p <= 3300000) return 1100000;
+    if(p <= 4100000) return Math.floor(p*0.25 + 275000);
+    if(p <= 7700000) return Math.floor(p*0.15 + 685000);
+    if(p <= 10000000) return Math.floor(p*0.05 + 1455000);
+    return 1955000;
+  } else {
+    if(p <= 600000) return p;
+    if(p <= 1300000) return 600000;
+    if(p <= 4100000) return Math.floor(p*0.25 + 275000);
+    if(p <= 7700000) return Math.floor(p*0.15 + 685000);
+    if(p <= 10000000) return Math.floor(p*0.05 + 1455000);
+    return 1955000;
+  }
+}
+
+function renderTaxSummary(el){
+  const years = Array.from(new Set(state.transactions.map(t=>t.date.slice(0,4)))).sort().reverse();
+  const currentYear = String(new Date().getFullYear());
+  if(!years.includes(currentYear)) years.unshift(currentYear);
+  if(!taxSelectedYear || !years.includes(taxSelectedYear)) taxSelectedYear = years[0];
+  if(!state.taxSettings){
+    state.taxSettings = { blueDeduction:650000, socialInsurance:0, medicalPaid:0, medicalInsured:0, pensionerAge65:true };
+  }
+
+  el.innerHTML = `
+    <h2 class="section-title">確定申告書 <span class="en">TAX RETURN (簡易版)</span></h2>
+    <p class="section-desc">
+      「勘定科目」タブで設定した所得区分をもとに、事業所得・不動産所得・公的年金等の雑所得と、青色申告特別控除、社会保険料控除、医療費控除、基礎控除を反映した課税所得金額と概算の所得税額を計算します。<br>
+      これは国税庁の確定申告書に近い形で記帳内容を整理する簡易ツールであり、正式な税額計算・申告書の作成そのものではありません。実際の提出前には、国税庁「確定申告書等作成コーナー」や税理士にご確認ください。
+    </p>
+    <div class="field-row" style="max-width:200px;">
+      <label>対象年</label>
+      <select id="taxYearSelect">${years.map(y=>`<option value="${y}" ${y===taxSelectedYear?'selected':''}>${y}年</option>`).join('')}</select>
+    </div>
+    <div id="taxSummaryBody"></div>
+  `;
+  document.getElementById('taxYearSelect').onchange = (e)=>{
+    taxSelectedYear = e.target.value;
+    renderTaxSummaryBody();
+  };
+  renderTaxSummaryBody();
+}
+
+function renderTaxSummaryBody(){
+  const wrap = document.getElementById('taxSummaryBody');
+  const year = taxSelectedYear;
+  const ts = state.taxSettings;
+
+  const bizRevenueAccounts = state.accounts.filter(a=>a.category==='revenue' && a.incomeType==='business');
+  const bizExpenseAccounts = state.accounts.filter(a=>a.category==='expense' && a.expenseType==='business');
+  const realRevenueAccounts = state.accounts.filter(a=>a.category==='revenue' && a.incomeType==='realestate');
+  const realExpenseAccounts = state.accounts.filter(a=>a.category==='expense' && a.expenseType==='realestate');
+  const pensionAccounts = state.accounts.filter(a=>a.category==='revenue' && a.incomeType==='pension');
+
+  const anySet = bizRevenueAccounts.length || bizExpenseAccounts.length || realRevenueAccounts.length || realExpenseAccounts.length || pensionAccounts.length;
+  if(!anySet){
+    wrap.innerHTML = `<div class="empty-state"><div class="mark">— 所得区分が設定されていません —</div>「勘定科目」タブで、収益・費用科目に事業所得・不動産所得・公的年金等の区分を設定してください</div>`;
+    return;
+  }
+
+  function sumForAccount(acc){
+    let sum = 0;
+    state.transactions.forEach(tx=>{
+      if(tx.date.slice(0,4) !== year) return;
+      const net = (tx.netAmount!==undefined) ? tx.netAmount : tx.amount;
+      if(acc.category==='revenue' && tx.creditAccountId===acc.id) sum += net;
+      if(acc.category==='expense' && tx.debitAccountId===acc.id) sum += net;
+    });
+    return sum;
+  }
+  const sumRows = (accs)=> accs.map(a=>({a, s:sumForAccount(a)})).filter(r=>r.s!==0);
+  const rowsHtml = (rows)=> rows.map(r=>`<tr><td>${r.a.name}</td><td style="text-align:right" class="num">${fmtYen(r.s)}</td></tr>`).join('')
+    || '<tr><td colspan=2 style="color:var(--sumi-soft)">該当する記帳がありません</td></tr>';
+
+  const bizRevRows = sumRows(bizRevenueAccounts);
+  const bizExpRows = sumRows(bizExpenseAccounts);
+  const realRevRows = sumRows(realRevenueAccounts);
+  const realExpRows = sumRows(realExpenseAccounts);
+  const pensionRows = sumRows(pensionAccounts);
+
+  const bizRevTotal = bizRevRows.reduce((s,r)=>s+r.s,0);
+  const bizExpTotal = bizExpRows.reduce((s,r)=>s+r.s,0);
+  const realRevTotal = realRevRows.reduce((s,r)=>s+r.s,0);
+  const realExpTotal = realExpRows.reduce((s,r)=>s+r.s,0);
+  const pensionTotal = pensionRows.reduce((s,r)=>s+r.s,0);
+
+  let bizIncomeRaw = bizRevTotal - bizExpTotal;
+  let realIncomeRaw = realRevTotal - realExpTotal;
+
+  // 青色申告特別控除：事業所得から優先的に差し引き、残りを不動産所得から
+  let blueLeft = ts.blueDeduction || 0;
+  const bizDeductApplied = Math.max(0, Math.min(blueLeft, bizIncomeRaw));
+  blueLeft -= bizDeductApplied;
+  const realDeductApplied = Math.max(0, Math.min(blueLeft, realIncomeRaw));
+
+  const bizIncome = bizIncomeRaw - bizDeductApplied;
+  const realIncome = realIncomeRaw - realDeductApplied;
+
+  const pensionDed = pensionTotal>0 ? pensionDeduction(pensionTotal, !!ts.pensionerAge65) : 0;
+  const pensionIncome = Math.max(0, pensionTotal - pensionDed);
+
+  const totalIncome = bizIncome + realIncome + pensionIncome;
+
+  // 医療費控除
+  const medicalNet = Math.max(0, (ts.medicalPaid||0) - (ts.medicalInsured||0));
+  const medicalThreshold = Math.min(100000, totalIncome*0.05);
+  const medicalDeduction = Math.max(0, Math.min(2000000, medicalNet - medicalThreshold));
+
+  const basicDeduction = ts.basicDeduction!==undefined ? ts.basicDeduction : 480000;
+  const totalDeduction = basicDeduction + socialDeduction + medicalDeduction;
+  const taxableIncomeRaw = Math.max(0, totalIncome - totalDeduction);
+  const taxableIncome = Math.floor(taxableIncomeRaw/1000)*1000;
+
+  const incomeTax = taxBracket(taxableIncome, ts.taxBrackets || defaultTaxBrackets());
+  const reconstructionTax = Math.floor(incomeTax*0.021);
+  const totalTax = incomeTax + reconstructionTax;
+
+  wrap.innerHTML = `
+    <h3 class="serif" style="font-size:15px;color:var(--ai);margin-bottom:6px;">① 収入・所得金額</h3>
+    <div class="two-col">
+      <div>
+        <h4 style="font-size:12.5px;color:var(--sumi-soft);margin:0 0 4px;">事業収入</h4>
+        <table><tbody>${rowsHtml(bizRevRows)}</tbody>
+          <tfoot><tr style="font-weight:700"><td>収入計</td><td style="text-align:right" class="num">${fmtYen(bizRevTotal)}</td></tr></tfoot>
+        </table>
+        <h4 style="font-size:12.5px;color:var(--sumi-soft);margin:10px 0 4px;">事業の必要経費</h4>
+        <table><tbody>${rowsHtml(bizExpRows)}</tbody>
+          <tfoot><tr style="font-weight:700"><td>経費計</td><td style="text-align:right" class="num">${fmtYen(bizExpTotal)}</td></tr></tfoot>
+        </table>
+      </div>
+      <div>
+        <h4 style="font-size:12.5px;color:var(--sumi-soft);margin:0 0 4px;">不動産収入</h4>
+        <table><tbody>${rowsHtml(realRevRows)}</tbody>
+          <tfoot><tr style="font-weight:700"><td>収入計</td><td style="text-align:right" class="num">${fmtYen(realRevTotal)}</td></tr></tfoot>
+        </table>
+        <h4 style="font-size:12.5px;color:var(--sumi-soft);margin:10px 0 4px;">不動産の必要経費</h4>
+        <table><tbody>${rowsHtml(realExpRows)}</tbody>
+          <tfoot><tr style="font-weight:700"><td>経費計</td><td style="text-align:right" class="num">${fmtYen(realExpTotal)}</td></tr></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <table style="margin-top:10px;">
+      <tbody>
+        <tr><td>公的年金等の収入金額</td><td style="text-align:right" class="num">${fmtYen(pensionTotal)}</td></tr>
+        <tr><td>公的年金等控除額</td><td style="text-align:right" class="num">${fmtYen(pensionDed)}</td></tr>
+      </tbody>
+    </table>
+
+    <div class="balance-check ok" style="margin-top:10px;">
+      <span>青色申告特別控除（事業所得へ${fmtYen(bizDeductApplied)} / 不動産所得へ${fmtYen(realDeductApplied)}）</span>
+      <span class="num">${fmtYen(bizDeductApplied+realDeductApplied)}</span>
+    </div>
+    <table style="margin-top:10px;">
+      <tbody>
+        <tr><td>事業所得</td><td style="text-align:right" class="num">${fmtYen(bizIncome)}</td></tr>
+        <tr><td>不動産所得</td><td style="text-align:right" class="num">${fmtYen(realIncome)}</td></tr>
+        <tr><td>雑所得（公的年金等）</td><td style="text-align:right" class="num">${fmtYen(pensionIncome)}</td></tr>
+        <tr style="font-weight:700"><td>総所得金額</td><td style="text-align:right" class="num">${fmtYen(totalIncome)}</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="serif" style="font-size:15px;color:var(--ai);margin:22px 0 6px;">② 所得から差し引かれる金額（所得控除）</h3>
+    <div class="field-row" style="max-width:260px;">
+      <label>社会保険料控除（年間支払額）</label>
+      <input type="number" id="socialInsuranceInput" value="${ts.socialInsurance||0}">
+    </div>
+    <div class="two-col">
+      <div class="field-row"><label>医療費の支払額（年間合計）</label><input type="number" id="medicalPaidInput" value="${ts.medicalPaid||0}"></div>
+      <div class="field-row"><label>保険金等で補填された額</label><input type="number" id="medicalInsuredInput" value="${ts.medicalInsured||0}"></div>
+    </div>
+    <div class="field-row" style="max-width:260px;">
+      <label>青色申告特別控除額</label>
+      <select id="blueDeductionSelect">
+        <option value="650000" ${ts.blueDeduction===650000?'selected':''}>65万円（e-Tax等の要件を満たす場合）</option>
+        <option value="550000" ${ts.blueDeduction===550000?'selected':''}>55万円</option>
+        <option value="100000" ${ts.blueDeduction===100000?'selected':''}>10万円</option>
+      </select>
+    </div>
+    <div class="field-row" style="max-width:260px;">
+      <label>公的年金等の受給者は65歳以上か</label>
+      <select id="pensionerAgeSelect">
+        <option value="yes" ${ts.pensionerAge65?'selected':''}>65歳以上</option>
+        <option value="no" ${!ts.pensionerAge65?'selected':''}>65歳未満</option>
+      </select>
+    </div>
+
+    <table style="margin-top:10px;">
+      <tbody>
+        <tr><td>基礎控除</td><td style="text-align:right" class="num">${fmtYen(basicDeduction)}</td></tr>
+        <tr><td>社会保険料控除</td><td style="text-align:right" class="num">${fmtYen(socialDeduction)}</td></tr>
+        <tr><td>医療費控除</td><td style="text-align:right" class="num">${fmtYen(medicalDeduction)}</td></tr>
+        <tr style="font-weight:700"><td>所得控除合計</td><td style="text-align:right" class="num">${fmtYen(totalDeduction)}</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="serif" style="font-size:15px;color:var(--ai);margin:22px 0 6px;">③ 税額の計算</h3>
+    <button class="btn btn-secondary" id="exportTaxPdfBtn" style="margin-bottom:14px;">下書きシートをPDF出力（提出用ではありません）</button>
+    <details style="margin-bottom:14px;">
+      <summary style="cursor:pointer;font-size:12.5px;color:var(--sumi-soft);">税率・基礎控除の設定を編集する</summary>
+      <div style="margin-top:10px;">
+        <div class="field-row" style="max-width:260px;">
+          <label>基礎控除額</label>
+          <input type="number" id="basicDeductionInput" value="${basicDeduction}">
+        </div>
+        <p style="font-size:11px;color:var(--sumi-soft);margin:10px 0 4px;">所得税の速算表（超過累進税率）。税制改正があった場合はここで更新してください。</p>
+        <table id="taxBracketTable">
+          <thead><tr><th>課税所得金額の上限</th><th>税率(%)</th><th>控除額</th><th></th></tr></thead>
+          <tbody>
+            ${ts.taxBrackets.map((b,i)=>`
+              <tr data-idx="${i}">
+                <td><input type="number" class="bracket-max" value="${b.max}" style="width:110px;"></td>
+                <td><input type="number" class="bracket-rate" value="${b.rate}" style="width:60px;"></td>
+                <td><input type="number" class="bracket-sub" value="${b.sub}" style="width:90px;"></td>
+                <td><button class="btn-danger bracket-del" data-idx="${i}">削除</button></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <div style="margin-top:8px;display:flex;gap:8px;">
+          <button class="btn-secondary" id="bracketAddBtn">区分を追加</button>
+          <button class="btn-secondary" id="bracketResetBtn">初期値に戻す</button>
+        </div>
+      </div>
+    </details>
+    <table>
+      <tbody>
+        <tr><td>課税所得金額</td><td style="text-align:right" class="num">${fmtYen(taxableIncome)}</td></tr>
+        <tr><td>所得税額（速算表による概算）</td><td style="text-align:right" class="num">${fmtYen(incomeTax)}</td></tr>
+        <tr><td>復興特別所得税（2.1%）</td><td style="text-align:right" class="num">${fmtYen(reconstructionTax)}</td></tr>
+        <tr style="font-weight:700"><td>納税額の目安（合計）</td><td style="text-align:right" class="num" style="color:var(--hanko)">${fmtYen(totalTax)}</td></tr>
+      </tbody>
+    </table>
+  `;
+
+  document.getElementById('basicDeductionInput').onchange = (e)=>{
+    ts.basicDeduction = parseFloat(e.target.value)||0;
+    saveState(true); renderTaxSummaryBody();
+  };
+  function readBracketsFromForm(){
+    const rows = document.querySelectorAll('#taxBracketTable tbody tr');
+    const table = Array.from(rows).map(row=>({
+      max: parseFloat(row.querySelector('.bracket-max').value)||0,
+      rate: parseFloat(row.querySelector('.bracket-rate').value)||0,
+      sub: parseFloat(row.querySelector('.bracket-sub').value)||0,
+    })).sort((a,b)=>a.max-b.max);
+    ts.taxBrackets = table;
+    saveState(true);
+    renderTaxSummaryBody();
+  }
+  document.querySelectorAll('.bracket-max, .bracket-rate, .bracket-sub').forEach(inp=>{
+    inp.onchange = readBracketsFromForm;
+  });
+  document.querySelectorAll('.bracket-del').forEach(btn=>{
+    btn.onclick = ()=>{
+      const idx = parseInt(btn.dataset.idx);
+      ts.taxBrackets.splice(idx,1);
+      saveState(true); renderTaxSummaryBody();
+    };
+  });
+  document.getElementById('bracketAddBtn').onclick = ()=>{
+    ts.taxBrackets.push({max:0, rate:0, sub:0});
+    saveState(true); renderTaxSummaryBody();
+  };
+  document.getElementById('bracketResetBtn').onclick = ()=>{
+    ts.taxBrackets = defaultTaxBrackets();
+    ts.basicDeduction = 480000;
+    saveState(true); renderTaxSummaryBody();
+  };
+  document.getElementById('medicalPaidInput').onchange = (e)=>{
+    ts.medicalPaid = parseFloat(e.target.value)||0;
+    saveState(true); renderTaxSummaryBody();
+  };
+  document.getElementById('exportTaxPdfBtn').onclick = ()=>{
+    generateTaxDraftPDF({
+      year, bizRevTotal, bizExpTotal, realRevTotal, realExpTotal,
+      pensionTotal, pensionDed,
+      bizDeductApplied, realDeductApplied, bizIncome, realIncome, pensionIncome, totalIncome,
+      basicDeduction, socialDeduction, medicalDeduction, totalDeduction,
+      taxableIncome, incomeTax, reconstructionTax, totalTax
+    });
+  };
+  document.getElementById('medicalInsuredInput').onchange = (e)=>{
+    ts.medicalInsured = parseFloat(e.target.value)||0;
+    saveState(true); renderTaxSummaryBody();
+  };
+  document.getElementById('blueDeductionSelect').onchange = (e)=>{
+    ts.blueDeduction = parseInt(e.target.value)||0;
+    saveState(true); renderTaxSummaryBody();
+  };
+  document.getElementById('pensionerAgeSelect').onchange = (e)=>{
+    ts.pensionerAge65 = (e.target.value==='yes');
+    saveState(true); renderTaxSummaryBody();
+  };
+}
+
+// ---------- payments ----------
+function paymentStatusInfo(dueDate, paid){
+  if(paid) return {label:'済', cls:'ok'};
+  if(!dueDate) return {label:'未済', cls:''};
+  const today = new Date().toISOString().slice(0,10);
+  if(dueDate < today) return {label:'期日超過', cls:'danger'};
+  const soon = new Date();
+  soon.setDate(soon.getDate()+7);
+  if(dueDate <= soon.toISOString().slice(0,10)) return {label:'期日間近', cls:'warn'};
+  return {label:'未済', cls:''};
+}
+
+function renderPayments(el){
+  let showAll = renderPayments._showAll || false;
+
+  // 記帳連動の支払い項目：支払管理対象の負債科目が貸方(発生)に使われた取引
+  const trackedAccountIds = new Set(state.accounts.filter(a=>a.category==='liability' && a.trackPayment).map(a=>a.id));
+  const linkedTx = state.transactions.filter(t=>trackedAccountIds.has(t.creditAccountId));
+
+  linkedTx.forEach(t=>{
+    if(!state.paymentMeta[t.id]){
+      state.paymentMeta[t.id] = {invoiceDate:t.date, dueDate:'', paidDate:'', paid:false};
+    }
+  });
+
+  el.innerHTML = `
+    <h2 class="section-title">支払管理 <span class="en">PAYMENTS</span></h2>
+    <p class="section-desc">「勘定科目」タブで「支払管理の対象」に指定した負債科目の記帳が、自動でここに一覧されます。請求日・支払期日・支払日を入力・編集できます。単発の支払い予定は下部から追加できます。</p>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--sumi-soft);margin-bottom:10px;">
+      <input type="checkbox" id="showAllToggle" ${showAll?'checked':''}> 支払済みの項目も表示する
+    </label>
+    <div id="paymentsList"></div>
+    <h3 class="serif" style="font-size:15px;color:var(--ai);margin:24px 0 8px;">単発の支払い予定を追加</h3>
+    <div class="two-col">
+      <div class="field-row"><label>内容</label><input type="text" id="newPayName" placeholder="例：固定資産税"></div>
+      <div class="field-row"><label>金額</label><input type="number" id="newPayAmount" placeholder="0"></div>
+    </div>
+    <div class="two-col">
+      <div class="field-row"><label>請求日</label><input type="date" id="newPayInvoice"></div>
+      <div class="field-row"><label>支払期日</label><input type="date" id="newPayDue"></div>
+    </div>
+    <button class="btn-primary" id="addPaymentBtn" style="margin-top:8px;">追加</button>
+  `;
+
+  document.getElementById('showAllToggle').onchange = (e)=>{
+    renderPayments._showAll = e.target.checked;
+    renderPaymentsList();
+  };
+  document.getElementById('addPaymentBtn').onclick = ()=>{
+    const name = document.getElementById('newPayName').value.trim();
+    const amount = parseFloat(document.getElementById('newPayAmount').value)||0;
+    const invoiceDate = document.getElementById('newPayInvoice').value;
+    const dueDate = document.getElementById('newPayDue').value;
+    if(!name){ alert('内容を入力してください'); return; }
+    state.payments.push({id:uid(), name, amount, invoiceDate, dueDate, paidDate:'', paid:false});
+    saveState(true);
+    render();
+  };
+
+  function renderPaymentsList(){
+    const wrap = document.getElementById('paymentsList');
+    const showAllNow = renderPayments._showAll || false;
+
+    const linkedRows = linkedTx.map(t=>{
+      const meta = state.paymentMeta[t.id];
+      const acc = accountById(t.creditAccountId);
+      return {
+        kind:'linked', txId:t.id,
+        name: t.memo || (acc?acc.name:''),
+        amount: t.amount,
+        invoiceDate: meta.invoiceDate,
+        dueDate: meta.dueDate,
+        paidDate: meta.paidDate,
+        paid: meta.paid,
+      };
+    });
+    const manualRows = state.payments.map(p=>({
+      kind:'manual', payId:p.id,
+      name:p.name, amount:p.amount, invoiceDate:p.invoiceDate, dueDate:p.dueDate, paidDate:p.paidDate, paid:p.paid,
+    }));
+    let rows = [...linkedRows, ...manualRows];
+    if(!showAllNow) rows = rows.filter(r=>!r.paid);
+    rows.sort((a,b)=> (a.dueDate||'9999').localeCompare(b.dueDate||'9999'));
+
+    if(rows.length===0){
+      wrap.innerHTML = `<div class="empty-state"><div class="mark">— 支払い項目がありません —</div>「勘定科目」タブで負債科目に「支払管理の対象」を設定するか、下から単発の支払いを追加してください</div>`;
+      return;
+    }
+
+    wrap.innerHTML = `
+      <table>
+        <thead><tr><th>内容</th><th>金額</th><th>請求日</th><th>支払期日</th><th>支払日</th><th>状態</th><th>済</th><th></th></tr></thead>
+        <tbody>
+          ${rows.map(r=>{
+            const status = paymentStatusInfo(r.dueDate, r.paid);
+            const rid = r.kind==='linked' ? `data-tx="${r.txId}"` : `data-pay="${r.payId}"`;
+            return `<tr ${rid}>
+              <td>${r.name}</td>
+              <td class="num" style="text-align:right">${fmtYen(r.amount)}</td>
+              <td><input type="date" class="pay-invoice" value="${r.invoiceDate||''}"></td>
+              <td><input type="date" class="pay-due" value="${r.dueDate||''}"></td>
+              <td><input type="date" class="pay-paiddate" value="${r.paidDate||''}"></td>
+              <td><span class="tag ${status.cls}">${status.label}</span></td>
+              <td><input type="checkbox" class="pay-paid" ${r.paid?'checked':''}></td>
+              <td>${r.kind==='manual' ? `<button class="btn-danger pay-del" data-pay="${r.payId}">削除</button>` : ''}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+
+    function getRecord(tr){
+      if(tr.dataset.tx) return state.paymentMeta[tr.dataset.tx];
+      return state.payments.find(p=>p.id===tr.dataset.pay);
+    }
+    wrap.querySelectorAll('tbody tr').forEach(tr=>{
+      const rec = getRecord(tr);
+      tr.querySelector('.pay-invoice').onchange = (e)=>{ rec.invoiceDate = e.target.value; saveState(true); };
+      tr.querySelector('.pay-due').onchange = (e)=>{ rec.dueDate = e.target.value; saveState(true); renderPaymentsList(); };
+      tr.querySelector('.pay-paiddate').onchange = (e)=>{ rec.paidDate = e.target.value; saveState(true); };
+      tr.querySelector('.pay-paid').onchange = (e)=>{ rec.paid = e.target.checked; saveState(true); renderPaymentsList(); };
+    });
+    wrap.querySelectorAll('.pay-del').forEach(btn=>{
+      btn.onclick = ()=>{
+        state.payments = state.payments.filter(p=>p.id!==btn.dataset.pay);
+        saveState(true); renderPaymentsList();
+      };
+    });
+  }
+  renderPaymentsList();
+}
+
+// ---------- consumption tax ----------
+let ctSelectedYear = null;
+function renderConsumptionTax(el){
+  const years = Array.from(new Set(state.transactions.map(t=>t.date.slice(0,4)))).sort().reverse();
+  const currentYear = String(new Date().getFullYear());
+  if(!years.includes(currentYear)) years.unshift(currentYear);
+  if(!ctSelectedYear || !years.includes(ctSelectedYear)) ctSelectedYear = years[0];
+
+  el.innerHTML = `
+    <h2 class="section-title">消費税 <span class="en">CONSUMPTION TAX</span></h2>
+    <p class="section-desc">
+      「仕訳入力」で選んだ消費税区分から、課税売上・課税仕入れに係る消費税額を集計します（税抜経理・原則課税を前提とした簡易計算）。<br>
+      実際の申告は、簡易課税制度の適用有無や非課税・不課税取引の判定など、他にも考慮すべき点があります。正式な申告前には税理士等にご確認ください。
+    </p>
+    <details style="margin-bottom:14px;">
+      <summary style="cursor:pointer;font-size:12.5px;color:var(--sumi-soft);">消費税率の設定を編集する</summary>
+      <div style="margin-top:10px;">
+        <table id="ctRateTable">
+          <thead><tr><th>区分名</th><th>税率(%)</th><th></th></tr></thead>
+          <tbody>
+            ${state.taxSettings.consumptionTaxRates.map((r,i)=>`
+              <tr data-idx="${i}">
+                <td><input type="text" class="ctrate-label" value="${r.label}" style="width:80px;"></td>
+                <td><input type="number" class="ctrate-value" value="${r.rate}" style="width:60px;"></td>
+                <td><button class="btn-danger ctrate-del" data-idx="${i}">削除</button></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <div style="margin-top:8px;display:flex;gap:8px;">
+          <button class="btn-secondary" id="ctRateAddBtn">区分を追加</button>
+          <button class="btn-secondary" id="ctRateResetBtn">初期値に戻す（標準10%・軽減8%）</button>
+        </div>
+      </div>
+    </details>
+    <div class="field-row" style="max-width:200px;">
+      <label>対象年</label>
+      <select id="ctYearSelect">${years.map(y=>`<option value="${y}" ${y===ctSelectedYear?'selected':''}>${y}年</option>`).join('')}</select>
+    </div>
+    <div id="ctBody"></div>
+  `;
+  document.getElementById('ctYearSelect').onchange = (e)=>{
+    ctSelectedYear = e.target.value;
+    renderConsumptionTaxBody();
+  };
+  function readCtRatesFromForm(){
+    const rows = document.querySelectorAll('#ctRateTable tbody tr');
+    state.taxSettings.consumptionTaxRates = Array.from(rows).map(row=>({
+      label: row.querySelector('.ctrate-label').value || '税率',
+      rate: parseFloat(row.querySelector('.ctrate-value').value)||0,
+    }));
+    saveState(true);
+    renderConsumptionTax(el);
+  }
+  document.querySelectorAll('.ctrate-label, .ctrate-value').forEach(inp=>{
+    inp.onchange = readCtRatesFromForm;
+  });
+  document.querySelectorAll('.ctrate-del').forEach(btn=>{
+    btn.onclick = ()=>{
+      state.taxSettings.consumptionTaxRates.splice(parseInt(btn.dataset.idx),1);
+      saveState(true); renderConsumptionTax(el);
+    };
+  });
+  document.getElementById('ctRateAddBtn').onclick = ()=>{
+    state.taxSettings.consumptionTaxRates.push({label:'新規', rate:0});
+    saveState(true); renderConsumptionTax(el);
+  };
+  document.getElementById('ctRateResetBtn').onclick = ()=>{
+    state.taxSettings.consumptionTaxRates = [{label:'標準', rate:10}, {label:'軽減', rate:8}];
+    saveState(true); renderConsumptionTax(el);
+  };
+  renderConsumptionTaxBody();
+}
+
+function renderConsumptionTaxBody(){
+  const wrap = document.getElementById('ctBody');
+  const year = ctSelectedYear;
+
+  const taxableTx = state.transactions.filter(t=>t.date.slice(0,4)===year && t.taxCategory==='taxable');
+  const salesTx = taxableTx.filter(t=>{
+    const c = accountById(t.creditAccountId);
+    return c && c.category==='revenue';
+  });
+  const purchaseTx = taxableTx.filter(t=>{
+    const d = accountById(t.debitAccountId);
+    return d && (d.category==='expense' || d.category==='asset');
+  });
+
+  const rowsHtml = (rows)=> rows.map(t=>{
+    const acc = accountById(t.creditAccountId) || accountById(t.debitAccountId);
+    return `<tr><td>${t.date}</td><td>${t.memo || (acc?acc.name:'')}</td><td style="text-align:right" class="num">${t.taxRate}%</td><td style="text-align:right" class="num">${fmtYen(t.netAmount)}</td><td style="text-align:right" class="num">${fmtYen(t.taxAmount)}</td></tr>`;
+  }).join('') || '<tr><td colspan=5 style="color:var(--sumi-soft)">該当する記帳がありません</td></tr>';
+
+  const outputTax = salesTx.reduce((s,t)=>s+t.taxAmount,0);
+  const inputTax = purchaseTx.reduce((s,t)=>s+t.taxAmount,0);
+  const payable = Math.floor((outputTax - inputTax)/100)*100;
+
+  wrap.innerHTML = `
+    <h3 class="serif" style="font-size:15px;color:var(--ai);margin-bottom:6px;">課税売上（仮受消費税）</h3>
+    <table><thead><tr><th>日付</th><th>内容</th><th>税率</th><th>本体</th><th>消費税額</th></tr></thead>
+      <tbody>${rowsHtml(salesTx)}</tbody>
+      <tfoot><tr style="font-weight:700"><td colspan=4>仮受消費税額 合計</td><td style="text-align:right" class="num">${fmtYen(outputTax)}</td></tr></tfoot>
+    </table>
+
+    <h3 class="serif" style="font-size:15px;color:var(--ai);margin:20px 0 6px;">課税仕入れ（仮払消費税）</h3>
+    <table><thead><tr><th>日付</th><th>内容</th><th>税率</th><th>本体</th><th>消費税額</th></tr></thead>
+      <tbody>${rowsHtml(purchaseTx)}</tbody>
+      <tfoot><tr style="font-weight:700"><td colspan=4>仮払消費税額 合計</td><td style="text-align:right" class="num">${fmtYen(inputTax)}</td></tr></tfoot>
+    </table>
+
+    <table style="margin-top:16px;">
+      <tbody>
+        <tr><td>仮受消費税額</td><td style="text-align:right" class="num">${fmtYen(outputTax)}</td></tr>
+        <tr><td>仮払消費税額（仕入税額控除）</td><td style="text-align:right" class="num">${fmtYen(inputTax)}</td></tr>
+        <tr style="font-weight:700"><td>差引納税額の目安（100円未満切捨）</td><td style="text-align:right" class="num" style="color:var(--hanko)">${fmtYen(payable)}</td></tr>
+      </tbody>
+    </table>
+  `;
+}
+
+// ---------- local tax (事業税・住民税) ----------
+let ltSelectedYear = null;
+function renderLocalTax(el){
+  const years = Array.from(new Set(state.transactions.map(t=>t.date.slice(0,4)))).sort().reverse();
+  const currentYear = String(new Date().getFullYear());
+  if(!years.includes(currentYear)) years.unshift(currentYear);
+  if(!ltSelectedYear || !years.includes(ltSelectedYear)) ltSelectedYear = years[0];
+  if(!state.taxSettings.localTax){
+    state.taxSettings.localTax = {
+      bizTaxRate: 5, bizTaxDeduction: 2900000, includeRealEstateInBizTax: false,
+      residentBasicDeduction: 430000, residentTaxRate: 10, residentPerCapita: 5000
+    };
+  }
+
+  el.innerHTML = `
+    <h2 class="section-title">事業税・住民税 <span class="en">LOCAL TAX</span></h2>
+    <p class="section-desc">
+      「確定申告」タブの所得金額をもとに、個人事業税・住民税の概算を計算します（簡易計算・下書き用）。<br>
+      事業税は業種により税率や事業主控除の考え方が異なる場合があり、住民税は自治体により均等割額や独自の控除が異なります。正式な金額は都道府県・市区町村の通知でご確認ください。
+    </p>
+    <div class="field-row" style="max-width:200px;">
+      <label>対象年</label>
+      <select id="ltYearSelect">${years.map(y=>`<option value="${y}" ${y===ltSelectedYear?'selected':''}>${y}年</option>`).join('')}</select>
+    </div>
+    <div id="ltBody"></div>
+  `;
+  document.getElementById('ltYearSelect').onchange = (e)=>{
+    ltSelectedYear = e.target.value;
+    renderLocalTaxBody();
+  };
+  renderLocalTaxBody();
+}
+
+function computeIncomeForYear(year){
+  // 確定申告タブと同じロジックで事業所得・不動産所得・総所得金額を再計算する
+  const ts = state.taxSettings;
+  const bizRevenueAccounts = state.accounts.filter(a=>a.category==='revenue' && a.incomeType==='business');
+  const bizExpenseAccounts = state.accounts.filter(a=>a.category==='expense' && a.expenseType==='business');
+  const realRevenueAccounts = state.accounts.filter(a=>a.category==='revenue' && a.incomeType==='realestate');
+  const realExpenseAccounts = state.accounts.filter(a=>a.category==='expense' && a.expenseType==='realestate');
+  const pensionAccounts = state.accounts.filter(a=>a.category==='revenue' && a.incomeType==='pension');
+
+  function sumForAccount(acc){
+    let sum = 0;
+    state.transactions.forEach(tx=>{
+      if(tx.date.slice(0,4) !== year) return;
+      const net = (tx.netAmount!==undefined) ? tx.netAmount : tx.amount;
+      if(acc.category==='revenue' && tx.creditAccountId===acc.id) sum += net;
+      if(acc.category==='expense' && tx.debitAccountId===acc.id) sum += net;
+    });
+    return sum;
+  }
+  const bizRevTotal = bizRevenueAccounts.reduce((s,a)=>s+sumForAccount(a),0);
+  const bizExpTotal = bizExpenseAccounts.reduce((s,a)=>s+sumForAccount(a),0);
+  const realRevTotal = realRevenueAccounts.reduce((s,a)=>s+sumForAccount(a),0);
+  const realExpTotal = realExpenseAccounts.reduce((s,a)=>s+sumForAccount(a),0);
+  const pensionTotal = pensionAccounts.reduce((s,a)=>s+sumForAccount(a),0);
+
+  let bizIncomeRaw = bizRevTotal - bizExpTotal;
+  let realIncomeRaw = realRevTotal - realExpTotal;
+  let blueLeft = ts.blueDeduction || 0;
+  const bizDeductApplied = Math.max(0, Math.min(blueLeft, bizIncomeRaw));
+  blueLeft -= bizDeductApplied;
+  const realDeductApplied = Math.max(0, Math.min(blueLeft, realIncomeRaw));
+  const bizIncome = bizIncomeRaw - bizDeductApplied;
+  const realIncome = realIncomeRaw - realDeductApplied;
+  const pensionDed = pensionTotal>0 ? pensionDeduction(pensionTotal, !!ts.pensionerAge65) : 0;
+  const pensionIncome = Math.max(0, pensionTotal - pensionDed);
+  const totalIncome = bizIncome + realIncome + pensionIncome;
+
+  return { bizIncomeRaw, realIncomeRaw, bizIncome, realIncome, pensionIncome, totalIncome };
+}
+
+function renderLocalTaxBody(){
+  const wrap = document.getElementById('ltBody');
+  const year = ltSelectedYear;
+  const ts = state.taxSettings;
+  const lt = ts.localTax;
+  const income = computeIncomeForYear(year);
+
+  // 個人事業税：事業所得（青色申告特別控除前）＋（対象にする場合）不動産所得 − 事業主控除
+  const bizTaxBase = income.bizIncomeRaw + (lt.includeRealEstateInBizTax ? income.realIncomeRaw : 0);
+  const bizTaxable = Math.max(0, Math.floor((bizTaxBase - lt.bizTaxDeduction)/1000)*1000);
+  const bizTax = Math.floor(bizTaxable * lt.bizTaxRate/100);
+
+  // 住民税：総所得金額 − 住民税の所得控除（基礎控除＋社会保険料控除＋医療費控除、所得税と同様の考え方）
+  const medicalNet = Math.max(0, (ts.medicalPaid||0) - (ts.medicalInsured||0));
+  const medicalThreshold = Math.min(100000, income.totalIncome*0.05);
+  const medicalDeduction = Math.max(0, Math.min(2000000, medicalNet - medicalThreshold));
+  const residentDeductionTotal = lt.residentBasicDeduction + (ts.socialInsurance||0) + medicalDeduction;
+  const residentTaxable = Math.max(0, Math.floor((income.totalIncome - residentDeductionTotal)/1000)*1000);
+  const residentIncomeTax = Math.floor(residentTaxable * lt.residentTaxRate/100);
+  const residentTotal = residentIncomeTax + lt.residentPerCapita;
+
+  wrap.innerHTML = `
+    <h3 class="serif" style="font-size:15px;color:var(--ai);margin-bottom:6px;">個人事業税</h3>
+    <div class="two-col">
+      <div class="field-row"><label>事業主控除額</label><input type="number" id="bizTaxDeductionInput" value="${lt.bizTaxDeduction}"></div>
+      <div class="field-row"><label>税率(%)</label><input type="number" id="bizTaxRateInput" value="${lt.bizTaxRate}"></div>
+    </div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--sumi-soft);margin:6px 0 10px;">
+      <input type="checkbox" id="includeRealEstateCheck" ${lt.includeRealEstateInBizTax?'checked':''}> 不動産所得も事業税の対象に含める(事業的規模の場合)
+    </label>
+    <table>
+      <tbody>
+        <tr><td>課税対象所得（青色申告特別控除前）</td><td style="text-align:right" class="num">${fmtYen(bizTaxBase)}</td></tr>
+        <tr><td>事業主控除</td><td style="text-align:right" class="num">${fmtYen(lt.bizTaxDeduction)}</td></tr>
+        <tr><td>課税標準額</td><td style="text-align:right" class="num">${fmtYen(bizTaxable)}</td></tr>
+        <tr style="font-weight:700"><td>個人事業税額の目安</td><td style="text-align:right" class="num" style="color:var(--hanko)">${fmtYen(bizTax)}</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="serif" style="font-size:15px;color:var(--ai);margin:24px 0 6px;">住民税</h3>
+    <div class="two-col">
+      <div class="field-row"><label>住民税の基礎控除額</label><input type="number" id="residentBasicInput" value="${lt.residentBasicDeduction}"></div>
+      <div class="field-row"><label>税率(%)（都道府県民税＋市区町村民税）</label><input type="number" id="residentRateInput" value="${lt.residentTaxRate}"></div>
+    </div>
+    <div class="field-row" style="max-width:260px;">
+      <label>均等割額（年額）</label>
+      <input type="number" id="residentPerCapitaInput" value="${lt.residentPerCapita}">
+    </div>
+    <table style="margin-top:8px;">
+      <tbody>
+        <tr><td>総所得金額</td><td style="text-align:right" class="num">${fmtYen(income.totalIncome)}</td></tr>
+        <tr><td>住民税の所得控除合計</td><td style="text-align:right" class="num">${fmtYen(residentDeductionTotal)}</td></tr>
+        <tr><td>課税所得金額</td><td style="text-align:right" class="num">${fmtYen(residentTaxable)}</td></tr>
+        <tr><td>所得割額</td><td style="text-align:right" class="num">${fmtYen(residentIncomeTax)}</td></tr>
+        <tr><td>均等割額</td><td style="text-align:right" class="num">${fmtYen(lt.residentPerCapita)}</td></tr>
+        <tr style="font-weight:700"><td>住民税額の目安（合計）</td><td style="text-align:right" class="num" style="color:var(--hanko)">${fmtYen(residentTotal)}</td></tr>
+      </tbody>
+    </table>
+  `;
+
+  document.getElementById('bizTaxDeductionInput').onchange = (e)=>{ lt.bizTaxDeduction = parseFloat(e.target.value)||0; saveState(true); renderLocalTaxBody(); };
+  document.getElementById('bizTaxRateInput').onchange = (e)=>{ lt.bizTaxRate = parseFloat(e.target.value)||0; saveState(true); renderLocalTaxBody(); };
+  document.getElementById('includeRealEstateCheck').onchange = (e)=>{ lt.includeRealEstateInBizTax = e.target.checked; saveState(true); renderLocalTaxBody(); };
+  document.getElementById('residentBasicInput').onchange = (e)=>{ lt.residentBasicDeduction = parseFloat(e.target.value)||0; saveState(true); renderLocalTaxBody(); };
+  document.getElementById('residentRateInput').onchange = (e)=>{ lt.residentTaxRate = parseFloat(e.target.value)||0; saveState(true); renderLocalTaxBody(); };
+  document.getElementById('residentPerCapitaInput').onchange = (e)=>{ lt.residentPerCapita = parseFloat(e.target.value)||0; saveState(true); renderLocalTaxBody(); };
+}
+
+// ---------- tax draft PDF ----------
+function generateTaxDraftPDF(d){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'mm', format:'a4'});
+  const pageW = 210, marginX = 15;
+  let y = 18;
+
+  function h1(text){
+    doc.setFont('helvetica','bold'); doc.setFontSize(14);
+    doc.text(text, marginX, y); y += 8;
+  }
+  function h2(text){
+    doc.setFont('helvetica','bold'); doc.setFontSize(11);
+    doc.text(text, marginX, y); y += 6;
+  }
+  function row(label, value, bold){
+    doc.setFont('helvetica', bold?'bold':'normal'); doc.setFontSize(10);
+    doc.text(label, marginX+2, y);
+    doc.text(String(value), pageW-marginX-2, y, {align:'right'});
+    y += 6;
+    if(y > 280){ doc.addPage(); y = 18; }
+  }
+  function hr(){
+    doc.setDrawColor(180); doc.line(marginX, y-2, pageW-marginX, y-2);
+  }
+  function yen(n){ return '¥' + Math.round(n).toLocaleString('ja-JP'); }
+
+  h1(`確定申告 下書きシート（${d.year}年分）`);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(120);
+  doc.text('※これは国税庁の正式な申告書ではありません。「確定申告書等作成コーナー」への入力用の下書き・確認資料です。', marginX, y);
+  doc.setTextColor(0);
+  y += 10;
+
+  h2('① 収入金額等・所得金額等');
+  row('事業収入', yen(d.bizRevTotal));
+  row('事業の必要経費', yen(d.bizExpTotal));
+  row('不動産収入', yen(d.realRevTotal));
+  row('不動産の必要経費', yen(d.realExpTotal));
+  row('公的年金等の収入金額', yen(d.pensionTotal));
+  row('公的年金等控除額', yen(d.pensionDed));
+  hr();
+  row('青色申告特別控除額（事業所得へ充当）', yen(d.bizDeductApplied));
+  row('青色申告特別控除額（不動産所得へ充当）', yen(d.realDeductApplied));
+  row('事業所得', yen(d.bizIncome));
+  row('不動産所得', yen(d.realIncome));
+  row('雑所得（公的年金等）', yen(d.pensionIncome));
+  row('総所得金額', yen(d.totalIncome), true);
+
+  y += 4;
+  h2('② 所得から差し引かれる金額（所得控除）');
+  row('基礎控除', yen(d.basicDeduction));
+  row('社会保険料控除', yen(d.socialDeduction));
+  row('医療費控除', yen(d.medicalDeduction));
+  row('所得控除合計', yen(d.totalDeduction), true);
+
+  y += 4;
+  h2('③ 税額の計算');
+  row('課税所得金額', yen(d.taxableIncome));
+  row('所得税額（速算表による概算）', yen(d.incomeTax));
+  row('復興特別所得税（2.1%）', yen(d.reconstructionTax));
+  row('納税額の目安（合計）', yen(d.totalTax), true);
+
+  y += 10;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(130);
+  doc.text('作成：藍帳（個人複式簿記アプリ）／出力日：' + new Date().toLocaleDateString('ja-JP'), marginX, y);
+
+  doc.save(`藍帳_確定申告下書き_${d.year}.pdf`);
+}
+
+// ---------- search ----------
+function renderSearch(el){
+  el.innerHTML = `
+    <h2 class="section-title">検索 <span class="en">SEARCH</span></h2>
+
+    <h3 class="serif" style="font-size:15px;color:var(--ai);margin-bottom:6px;">タブ検索</h3>
+    <p class="section-desc">タブ名の一部を入力すると、該当するタブが一覧されます。タップで移動できます。</p>
+    <div class="field-row" style="max-width:300px;">
+      <input type="text" id="tabSearchInput" placeholder="例：確定申告、支払、消費税">
+    </div>
+    <div id="tabSearchResults" style="margin-bottom:26px;"></div>
+
+    <h3 class="serif" style="font-size:15px;color:var(--ai);margin-bottom:6px;">記帳内容の検索</h3>
+    <p class="section-desc">摘要（メモ）・勘定科目名・金額・日付で記帳を検索できます。</p>
+    <div class="two-col">
+      <div class="field-row"><label>キーワード（摘要・科目名）</label><input type="text" id="txSearchKeyword" placeholder="例：Amazon、給与"></div>
+      <div class="field-row"><label>金額（完全一致）</label><input type="number" id="txSearchAmount" placeholder="指定なし"></div>
+    </div>
+    <div class="two-col">
+      <div class="field-row"><label>開始日</label><input type="date" id="txSearchFrom"></div>
+      <div class="field-row"><label>終了日</label><input type="date" id="txSearchTo"></div>
+    </div>
+    <button class="btn-primary" id="txSearchBtn" style="margin-top:4px;">検索する</button>
+    <div id="txSearchResults" style="margin-top:14px;"></div>
+  `;
+
+  const tabInput = document.getElementById('tabSearchInput');
+  const tabResults = document.getElementById('tabSearchResults');
+  function renderTabResults(){
+    const q = tabInput.value.trim();
+    const matches = TABS.filter(t => t.id!=='search' && (!q || t.label.includes(q)));
+    tabResults.innerHTML = matches.map(t=>`<div class="search-result-row" data-tab="${t.id}" style="padding:8px 10px;border-bottom:1px solid var(--line,rgba(0,0,0,0.08));cursor:pointer;">${t.label}</div>`).join('')
+      || '<div style="color:var(--sumi-soft);font-size:12.5px;">該当するタブがありません</div>';
+    tabResults.querySelectorAll('.search-result-row').forEach(row=>{
+      row.onclick = ()=>{ currentTab = row.dataset.tab; render(); };
+    });
+  }
+  tabInput.oninput = renderTabResults;
+  renderTabResults();
+
+  document.getElementById('txSearchBtn').onclick = ()=>{
+    const keyword = document.getElementById('txSearchKeyword').value.trim();
+    const amount = document.getElementById('txSearchAmount').value;
+    const from = document.getElementById('txSearchFrom').value;
+    const to = document.getElementById('txSearchTo').value;
+
+    let results = state.transactions.filter(tx=>{
+      if(from && tx.date < from) return false;
+      if(to && tx.date > to) return false;
+      if(amount && tx.amount !== parseFloat(amount)) return false;
+      if(keyword){
+        const debitAcc = accountById(tx.debitAccountId);
+        const creditAcc = accountById(tx.creditAccountId);
+        const haystack = [tx.memo, debitAcc?debitAcc.name:'', creditAcc?creditAcc.name:''].join(' ');
+        if(!haystack.includes(keyword)) return false;
+      }
+      return true;
+    });
+    results = results.slice().sort((a,b)=> b.date.localeCompare(a.date));
+
+    const out = document.getElementById('txSearchResults');
+    if(results.length===0){
+      out.innerHTML = `<div class="empty-state"><div class="mark">— 該当する記帳がありません —</div></div>`;
+      return;
+    }
+    out.innerHTML = `
+      <table>
+        <thead><tr><th>日付</th><th>借方</th><th>貸方</th><th>金額</th><th>摘要</th></tr></thead>
+        <tbody>
+          ${results.map(tx=>{
+            const debitAcc = accountById(tx.debitAccountId);
+            const creditAcc = accountById(tx.creditAccountId);
+            return `<tr><td>${tx.date}</td><td>${debitAcc?debitAcc.name:''}</td><td>${creditAcc?creditAcc.name:''}</td><td style="text-align:right" class="num">${fmtYen(tx.amount)}</td><td>${tx.memo||''}</td></tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+      <p style="font-size:12px;color:var(--sumi-soft);margin-top:8px;">${results.length}件見つかりました</p>
+    `;
+  };
+}
+
+// ---------- csv import ----------
+let csvImport = {
+  step: 1,
+  targetAccountId: null,
+  encoding: 'utf-8',
+  rawText: '',
+  headerRow: true,
+  rows: [], // 全行（配列の配列）
+  mapping: [], // 列ごとの役割： 'date'|'memo'|'in'|'out'|'amount'|'ignore'
+  preview: [], // {date, memo, amount, direction, accountId, include}
+};
+
+function parseCSV(text){
+  // シンプルなCSVパーサー（ダブルクォート対応）
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i];
+    if(inQuotes){
+      if(c === '"'){
+        if(text[i+1] === '"'){ field += '"'; i++; }
+        else inQuotes = false;
+      } else field += c;
+    } else {
+      if(c === '"') inQuotes = true;
+      else if(c === ','){ row.push(field); field=''; }
+      else if(c === '\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+      else if(c === '\r'){ /* skip */ }
+      else field += c;
+    }
+  }
+  if(field!=='' || row.length>0){ row.push(field); rows.push(row); }
+  return rows.filter(r=>r.length>1 || (r.length===1 && r[0].trim()!==''));
+}
+
+function parseJapaneseDate(str){
+  if(!str) return '';
+  str = str.trim();
+  let m;
+  if((m = str.match(/^(\d{4})[\/\-年](\d{1,2})[\/\-月](\d{1,2})日?$/))){
+    return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+  }
+  if((m = str.match(/^(\d{4})(\d{2})(\d{2})$/))){
+    return `${m[1]}-${m[2]}-${m[3]}`;
+  }
+  return str;
+}
+
+function parseAmount(str){
+  if(str===undefined || str===null) return 0;
+  const cleaned = String(str).replace(/[¥,\s円]/g,'').replace(/^"|"$/g,'');
+  const v = parseFloat(cleaned);
+  return isNaN(v) ? 0 : v;
+}
+
+function guessAccountForMemo(memo){
+  if(!memo) return '';
+  const rule = state.csvRules.find(r=>memo.includes(r.keyword));
+  return rule ? rule.accountId : '';
+}
+
+function renderCsvImport(el){
+  el.innerHTML = `
+    <h2 class="section-title">CSV取込 <span class="en">CSV IMPORT</span></h2>
+    <p class="section-desc">
+      銀行のネットバンキングなどからダウンロードしたCSV明細を取り込み、記帳の下書きを作成します（現状は汎用フォーマット対応。銀行別の自動対応は今後追加予定）。<br>
+      取り込み後の内容は必ず確認してから記帳してください。
+    </p>
+    <div id="csvBody"></div>
+  `;
+  renderCsvImportBody(el);
+}
+
+function renderCsvImportBody(el){
+  const wrap = document.getElementById('csvBody') || el;
+  const assetAccounts = state.accounts.filter(a=>a.category==='asset');
+
+  if(csvImport.step===1){
+    wrap.innerHTML = `
+      <h3 class="serif" style="font-size:15px;color:var(--ai);margin-bottom:6px;">① 取込先の口座を選択</h3>
+      <div class="field-row" style="max-width:300px;">
+        <label>この明細はどの資産科目（口座）のものですか</label>
+        <select id="csvTargetAccount">
+          <option value="">選択してください</option>
+          ${assetAccounts.map(a=>`<option value="${a.id}" ${a.id===csvImport.targetAccountId?'selected':''}>${a.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field-row" style="max-width:300px;">
+        <label>文字コード</label>
+        <select id="csvEncoding">
+          <option value="utf-8" ${csvImport.encoding==='utf-8'?'selected':''}>UTF-8</option>
+          <option value="shift-jis" ${csvImport.encoding==='shift-jis'?'selected':''}>Shift-JIS（文字化けする場合）</option>
+        </select>
+      </div>
+      <div class="field-row" style="max-width:300px;">
+        <label>CSVファイル</label>
+        <input type="file" id="csvFileInput" accept=".csv,text/csv">
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--sumi-soft);margin-top:8px;">
+        <input type="checkbox" id="csvHeaderCheck" ${csvImport.headerRow?'checked':''}> 1行目は見出し（ヘッダー）行
+      </label>
+    `;
+    document.getElementById('csvTargetAccount').onchange = (e)=>{ csvImport.targetAccountId = e.target.value; };
+    document.getElementById('csvEncoding').onchange = (e)=>{ csvImport.encoding = e.target.value; };
+    document.getElementById('csvHeaderCheck').onchange = (e)=>{ csvImport.headerRow = e.target.checked; };
+    document.getElementById('csvFileInput').onchange = (e)=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev)=>{
+        const buf = ev.target.result;
+        let text;
+        try{
+          text = new TextDecoder(csvImport.encoding).decode(buf);
+        } catch(err){
+          text = new TextDecoder('utf-8').decode(buf);
+        }
+        csvImport.rawText = text;
+        csvImport.rows = parseCSV(text);
+        if(csvImport.rows.length===0){ alert('CSVを読み取れませんでした'); return; }
+        csvImport.mapping = csvImport.rows[0].map(()=>'ignore');
+        if(!csvImport.targetAccountId){ alert('先に口座を選択してください'); return; }
+        csvImport.step = 2;
+        renderCsvImportBody(el);
+      };
+      reader.readAsArrayBuffer(file);
+    };
+    return;
+  }
+
+  if(csvImport.step===2){
+    const headerCells = csvImport.rows[0];
+    const roleOptions = [
+      {v:'ignore', l:'（使わない）'},
+      {v:'date', l:'日付'},
+      {v:'memo', l:'摘要・内容'},
+      {v:'in', l:'入金額'},
+      {v:'out', l:'出金額'},
+      {v:'amount', l:'金額（＋入金／－出金）'},
+    ];
+    wrap.innerHTML = `
+      <h3 class="serif" style="font-size:15px;color:var(--ai);margin-bottom:6px;">② 列の割り当て</h3>
+      <p style="font-size:12px;color:var(--sumi-soft);">各列が何を表しているか選んでください。プレビュー1行目：${csvImport.headerRow ? '（見出し行のため非表示）' : ''}</p>
+      <table>
+        <thead><tr>${headerCells.map((h,i)=>`<th>列${i+1}${csvImport.headerRow?` (${h})`:''}</th>`).join('')}</tr></thead>
+        <tbody>
+          <tr>${headerCells.map((h,i)=>`
+            <td><select class="csv-col-role" data-idx="${i}">
+              ${roleOptions.map(o=>`<option value="${o.v}" ${csvImport.mapping[i]===o.v?'selected':''}>${o.l}</option>`).join('')}
+            </select></td>
+          `).join('')}</tr>
+          <tr>${(csvImport.rows[csvImport.headerRow?1:0]||[]).map(v=>`<td style="font-size:11px;color:var(--sumi-soft);">${v}</td>`).join('')}</tr>
+        </tbody>
+      </table>
+      <div style="margin-top:12px;display:flex;gap:8px;">
+        <button class="btn-secondary" id="csvBackBtn">戻る</button>
+        <button class="btn-primary" id="csvNextBtn">次へ（プレビュー）</button>
+      </div>
+    `;
+    wrap.querySelectorAll('.csv-col-role').forEach(sel=>{
+      sel.onchange = ()=>{ csvImport.mapping[parseInt(sel.dataset.idx)] = sel.value; };
+    });
+    document.getElementById('csvBackBtn').onclick = ()=>{ csvImport.step=1; renderCsvImportBody(el); };
+    document.getElementById('csvNextBtn').onclick = ()=>{
+      const hasDate = csvImport.mapping.includes('date');
+      const hasAmount = csvImport.mapping.includes('amount') || csvImport.mapping.includes('in') || csvImport.mapping.includes('out');
+      if(!hasDate || !hasAmount){ alert('日付と金額（または入金額／出金額）の列を指定してください'); return; }
+      buildCsvPreview();
+      csvImport.step = 3;
+      renderCsvImportBody(el);
+    };
+    return;
+  }
+
+  if(csvImport.step===3){
+    const expenseAssetAccounts = state.accounts.filter(a=>a.category!=='equity');
+    wrap.innerHTML = `
+      <h3 class="serif" style="font-size:15px;color:var(--ai);margin-bottom:6px;">③ 内容の確認・相手科目の選択</h3>
+      <p style="font-size:12px;color:var(--sumi-soft);">摘要から自動で科目候補を提案しています。必要に応じて変更してください。チェックを外した行は取り込まれません。</p>
+      <table>
+        <thead><tr><th>取込</th><th>日付</th><th>摘要</th><th>入出金</th><th>金額</th><th>相手科目</th></tr></thead>
+        <tbody>
+          ${csvImport.preview.map((r,i)=>`
+            <tr data-idx="${i}">
+              <td><input type="checkbox" class="csv-inc" ${r.include?'checked':''}></td>
+              <td><input type="date" class="csv-date" value="${r.date}" style="width:130px;"></td>
+              <td><input type="text" class="csv-memo" value="${r.memo}" style="width:160px;"></td>
+              <td>${r.direction==='in'?'入金':'出金'}</td>
+              <td class="num" style="text-align:right">${fmtYen(r.amount)}</td>
+              <td><select class="csv-acc">
+                <option value="">選択してください</option>
+                ${expenseAssetAccounts.map(a=>`<option value="${a.id}" ${a.id===r.accountId?'selected':''}>${a.name}</option>`).join('')}
+              </select></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      <div style="margin-top:12px;display:flex;gap:8px;">
+        <button class="btn-secondary" id="csvBackBtn2">戻る</button>
+        <button class="btn-primary" id="csvImportBtn">この内容で記帳する</button>
+      </div>
+    `;
+    wrap.querySelectorAll('tbody tr').forEach(tr=>{
+      const idx = parseInt(tr.dataset.idx);
+      tr.querySelector('.csv-inc').onchange = (e)=>{ csvImport.preview[idx].include = e.target.checked; };
+      tr.querySelector('.csv-date').onchange = (e)=>{ csvImport.preview[idx].date = e.target.value; };
+      tr.querySelector('.csv-memo').onchange = (e)=>{ csvImport.preview[idx].memo = e.target.value; };
+      tr.querySelector('.csv-acc').onchange = (e)=>{
+        csvImport.preview[idx].accountId = e.target.value;
+        // 同じ摘要文言のルールとして保存し、他の未設定行にも適用
+        const memo = csvImport.preview[idx].memo;
+        if(memo && e.target.value){
+          const key = memo.slice(0,8);
+          const existing = state.csvRules.find(r=>r.keyword===key);
+          if(existing) existing.accountId = e.target.value;
+          else state.csvRules.push({keyword:key, accountId:e.target.value});
+          csvImport.preview.forEach(r=>{
+            if(!r.accountId && r.memo.includes(key)) r.accountId = e.target.value;
+          });
+          saveState(true);
+          renderCsvImportBody(el);
+        }
+      };
+    });
+    document.getElementById('csvBackBtn2').onclick = ()=>{ csvImport.step=2; renderCsvImportBody(el); };
+    document.getElementById('csvImportBtn').onclick = ()=>{
+      let count = 0;
+      csvImport.preview.forEach(r=>{
+        if(!r.include || !r.accountId || !r.date || !r.amount) return;
+        const debitId = r.direction==='in' ? csvImport.targetAccountId : r.accountId;
+        const creditId = r.direction==='in' ? r.accountId : csvImport.targetAccountId;
+        state.transactions.push({
+          id: uid(), date:r.date, debitAccountId:debitId, creditAccountId:creditId, amount:r.amount, memo:r.memo, type:'csv',
+          taxCategory:'none', taxRate:0, taxAmount:0, netAmount:r.amount
+        });
+        count++;
+      });
+      saveState(true);
+      alert(`${count}件を記帳しました`);
+      csvImport = { step:1, targetAccountId:null, encoding:'utf-8', rawText:'', headerRow:true, rows:[], mapping:[], preview:[] };
+      render();
+    };
+    return;
+  }
+}
+
+function buildCsvPreview(){
+  const startIdx = csvImport.headerRow ? 1 : 0;
+  const dateIdx = csvImport.mapping.indexOf('date');
+  const memoIdx = csvImport.mapping.indexOf('memo');
+  const inIdx = csvImport.mapping.indexOf('in');
+  const outIdx = csvImport.mapping.indexOf('out');
+  const amtIdx = csvImport.mapping.indexOf('amount');
+
+  const preview = [];
+  for(let i=startIdx;i<csvImport.rows.length;i++){
+    const row = csvImport.rows[i];
+    if(!row || row.every(c=>!c || !c.trim())) continue;
+    const date = parseJapaneseDate(dateIdx>=0 ? row[dateIdx] : '');
+    const memo = memoIdx>=0 ? (row[memoIdx]||'').trim() : '';
+    let amount = 0, direction = 'out';
+    if(amtIdx>=0){
+      amount = parseAmount(row[amtIdx]);
+      direction = amount>=0 ? 'in' : 'out';
+      amount = Math.abs(amount);
+    } else {
+      const inV = inIdx>=0 ? parseAmount(row[inIdx]) : 0;
+      const outV = outIdx>=0 ? parseAmount(row[outIdx]) : 0;
+      if(inV>0){ amount = inV; direction = 'in'; }
+      else { amount = outV; direction = 'out'; }
+    }
+    if(!date || amount===0) continue;
+    preview.push({
+      date, memo, amount, direction,
+      accountId: guessAccountForMemo(memo),
+      include: true,
+    });
+  }
+  csvImport.preview = preview;
+}
+
+// ---------- backup (export / import) ----------
+function renderBackup(el){
+  const dateStr = new Date().toISOString().slice(0,10);
+  el.innerHTML = `
+    <h2 class="section-title">バックアップ <span class="en">EXPORT / IMPORT</span></h2>
+    <p class="section-desc">
+      記帳データは、このHTMLファイルを開いているブラウザ（この端末のこのブラウザ）に保存されています。同じファイルを同じブラウザで開き直せば、データはそのまま残っています。<br>
+      ただし、別の端末やブラウザで開いた場合、ブラウザのデータを消去した場合は、このデータにはアクセスできません。Google DriveやSamsung（Galaxy）クラウドなどに保存したい場合や、機種変更・バージョンアップの際にデータを引き継ぎたい場合は、以下からデータファイルを書き出し、端末の共有機能でクラウドやメールに保存してください。
+    </p>
+    <div class="stat-card" style="margin-bottom:18px;">
+      <div class="stat-label">データ書き出し（エクスポート）</div>
+      <p style="font-size:12.5px;color:var(--sumi-soft);margin:6px 0 12px;">勘定科目・仕訳データすべてを1つのファイルにまとめます。書き出し後、共有メニューからGoogle DriveやGalaxyアプリに保存できます。</p>
+      <button class="btn btn-primary" id="exportBtn">バックアップファイルを書き出す</button>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">データ読み込み（インポート）</div>
+      <p style="font-size:12.5px;color:var(--sumi-soft);margin:6px 0 12px;">書き出したファイルを選ぶと、現在のデータを置き換えます（元に戻せません）。</p>
+      <input type="file" id="importFile" accept="application/json">
+      <div style="margin-top:10px;">
+        <button class="btn btn-ghost" id="importBtn">このファイルで復元する</button>
+      </div>
+    </div>
+    <div class="stat-card" style="margin-top:18px;">
+      <div class="stat-label">合言葉の変更</div>
+      <p style="font-size:12.5px;color:var(--sumi-soft);margin:6px 0 12px;">アプリを開く際の合言葉を変更できます。現在の合言葉の確認は行いませんが、次回このアプリを開く際は新しい合言葉が必要になります。</p>
+      <div class="field-row" style="max-width:280px;">
+        <label>新しい合言葉（4文字以上）</label>
+        <div style="position:relative;">
+          <input type="password" id="newLockPasswordInput" style="width:100%;padding-right:40px;box-sizing:border-box;" autocomplete="off">
+          <button type="button" id="newLockToggleVisibility" aria-label="合言葉を表示" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:6px;color:var(--sumi-soft);font-size:16px;line-height:1;">👁</button>
+        </div>
+      </div>
+      <div class="field-row" style="max-width:280px;">
+        <label>もう一度入力してください</label>
+        <div style="position:relative;">
+          <input type="password" id="newLockPasswordConfirmInput" style="width:100%;padding-right:40px;box-sizing:border-box;" autocomplete="off">
+          <button type="button" id="newLockToggleVisibilityConfirm" aria-label="合言葉を表示" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:6px;color:var(--sumi-soft);font-size:16px;line-height:1;">👁</button>
+        </div>
+      </div>
+      <div id="newLockPasswordError" style="color:#a63446;font-size:12px;min-height:16px;margin-bottom:4px;"></div>
+      <button class="btn btn-ghost" id="changeLockPasswordBtn">合言葉を変更する</button>
+    </div>
+  `;
+
+  [document.getElementById('newLockPasswordInput'), document.getElementById('newLockPasswordConfirmInput')].forEach(el=>{
+    el.addEventListener('paste', (e)=> e.preventDefault());
+    el.addEventListener('drop', (e)=> e.preventDefault());
+  });
+
+  document.getElementById('newLockToggleVisibility').onclick = ()=>{
+    const inp = document.getElementById('newLockPasswordInput');
+    const btn = document.getElementById('newLockToggleVisibility');
+    const showing = inp.type === 'text';
+    inp.type = showing ? 'password' : 'text';
+    btn.textContent = showing ? '👁' : '🙈';
+  };
+  document.getElementById('newLockToggleVisibilityConfirm').onclick = ()=>{
+    const inp = document.getElementById('newLockPasswordConfirmInput');
+    const btn = document.getElementById('newLockToggleVisibilityConfirm');
+    const showing = inp.type === 'text';
+    inp.type = showing ? 'password' : 'text';
+    btn.textContent = showing ? '👁' : '🙈';
+  };
+
+  document.getElementById('changeLockPasswordBtn').onclick = async ()=>{
+    const val = document.getElementById('newLockPasswordInput').value;
+    const val2 = document.getElementById('newLockPasswordConfirmInput').value;
+    const errEl = document.getElementById('newLockPasswordError');
+    if(!val || val.length < 4){ errEl.textContent = '4文字以上で入力してください'; return; }
+    if(val !== val2){ errEl.textContent = '2つの入力が一致しません'; return; }
+    errEl.textContent = '';
+    const hash = await sha256Hex(val);
+    localStorage.setItem(LOCK_PASSWORD_KEY, hash);
+    document.getElementById('newLockPasswordInput').value = '';
+    document.getElementById('newLockPasswordConfirmInput').value = '';
+    doToast('合言葉を変更しました');
+  };
+
+  document.getElementById('exportBtn').onclick = ()=>{
+    try{
+      const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `aicho-backup-${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(()=> URL.revokeObjectURL(url), 2000);
+      doToast('書き出しました。共有メニューからクラウドに保存できます');
+    }catch(e){
+      doToast('書き出しに失敗しました');
+    }
+  };
+
+  document.getElementById('importBtn').onclick = ()=>{
+    const fileInput = document.getElementById('importFile');
+    const file = fileInput.files && fileInput.files[0];
+    if(!file){ doToast('ファイルを選択してください'); return; }
+    const reader = new FileReader();
+    reader.onload = (ev)=>{
+      try{
+        const parsed = JSON.parse(ev.target.result);
+        if(!parsed.accounts || !parsed.transactions){ throw new Error('invalid'); }
+        state = Object.assign({accounts:[], transactions:[], setupDone:false}, parsed);
+        saveState(true);
+        render();
+        doToast('復元しました');
+      }catch(e){
+        doToast('ファイルの形式が正しくありません');
+      }
+    };
+    reader.readAsText(file);
+  };
+}
+
+// ---------- init ----------
+function withTimeout(promise, ms){
+  return Promise.race([
+    promise,
+    new Promise((_, reject)=> setTimeout(()=> reject(new Error('timeout')), ms))
+  ]);
+}
+
+// ---------- password lock ----------
+async function sha256Hex(text){
+  const enc = new TextEncoder().encode(text);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+function startApp(){
+  document.getElementById('lockScreen').style.display = 'none';
+  document.getElementById('appRoot').style.display = '';
+  loadState();
+}
+
+async function initLock(){
+  const savedHash = localStorage.getItem(LOCK_PASSWORD_KEY);
+  const screen = document.getElementById('lockScreen');
+  const input = document.getElementById('lockPasswordInput');
+  const confirmWrap = document.getElementById('lockConfirmWrap');
+  const confirmInput = document.getElementById('lockPasswordConfirmInput');
+  const errorEl = document.getElementById('lockError');
+  const btn = document.getElementById('lockSubmitBtn');
+  const promptEl = document.getElementById('lockPromptText');
+
+  // Block paste/drop into password fields so the password must be typed, not copied in.
+  [input, confirmInput].forEach(el=>{
+    el.addEventListener('paste', (e)=> e.preventDefault());
+    el.addEventListener('drop', (e)=> e.preventDefault());
+    el.addEventListener('contextmenu', (e)=> e.preventDefault());
+  });
+
+  if(!savedHash){
+    // First time: let the user set a password (typed twice to confirm)
+    promptEl.textContent = '合言葉を設定してください（次回から必要になります）';
+    confirmWrap.style.display = '';
+    btn.textContent = '設定する';
+    btn.onclick = async ()=>{
+      const val = input.value;
+      const val2 = confirmInput.value;
+      if(!val || val.length < 4){
+        errorEl.textContent = '4文字以上で設定してください';
+        return;
+      }
+      if(val !== val2){
+        errorEl.textContent = '2つの入力が一致しません';
+        return;
+      }
+      const hash = await sha256Hex(val);
+      localStorage.setItem(LOCK_PASSWORD_KEY, hash);
+      startApp();
+    };
+  } else {
+    confirmWrap.style.display = 'none';
+    btn.onclick = async ()=>{
+      const val = input.value;
+      const hash = await sha256Hex(val);
+      if(hash === savedHash){
+        startApp();
+      } else {
+        errorEl.textContent = '合言葉が違います';
+        input.value = '';
+      }
+    };
+  }
+  input.onkeydown = (e)=>{ if(e.key==='Enter') btn.onclick(); };
+  confirmInput.onkeydown = (e)=>{ if(e.key==='Enter') btn.onclick(); };
+  input.focus();
+
+  function wireToggle(toggleId, targetInput){
+    const toggleBtn = document.getElementById(toggleId);
+    toggleBtn.onclick = ()=>{
+      const showing = targetInput.type === 'text';
+      targetInput.type = showing ? 'password' : 'text';
+      toggleBtn.textContent = showing ? '👁' : '🙈';
+      toggleBtn.setAttribute('aria-label', showing ? '合言葉を表示' : '合言葉を隠す');
+      targetInput.focus();
+    };
+  }
+  wireToggle('lockToggleVisibility', input);
+  wireToggle('lockToggleVisibilityConfirm', confirmInput);
+}
+
+initLock();
+</script>
+</body>
+</html>
